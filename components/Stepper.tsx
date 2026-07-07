@@ -28,7 +28,7 @@ export function ScoreStepper({ name, color, value, onChange }: {
           type="button"
           aria-label="増やす"
           onClick={() => onChange(value + 1)}
-          className="glow-neon h-11 w-14 rounded-xl bg-neon text-xl font-extrabold text-[#0a1400] transition active:scale-95"
+          className="glow-neon h-11 w-14 rounded-xl bg-neon text-xl font-extrabold text-white transition active:scale-95"
         >
           ＋
         </button>

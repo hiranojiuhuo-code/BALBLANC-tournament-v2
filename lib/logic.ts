@@ -4,7 +4,7 @@ import type {
 
 export const CATS: Record<Cat, string> = { S: 'シングルス', D: 'ダブルス', M: 'ミックス' };
 
-export const PALETTE = ['#5b8cff', '#ff9459', '#3ddc78', '#c9a6ff', '#ff6bb3', '#22d3ee', '#9aa7b8', '#ffd166'];
+export const PALETTE = ['#2f6df6', '#e8590c', '#2fa84f', '#7048e8', '#c2255c', '#0c8599', '#495057', '#d6336c'];
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 9);

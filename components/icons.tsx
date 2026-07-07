@@ -42,18 +42,22 @@ export const IconUp = (p: P) => <svg {...base(p)}><path d="M6 14l6-6 6 6" /></sv
 export const IconDown = (p: P) => <svg {...base(p)}><path d="M6 10l6 6 6-6" /></svg>;
 
 export function BallLogo({ className = '' }: { className?: string }) {
+  // SVGのid参照はページ全体で解決されるため、複数配置しても衝突しないようインスタンスごとに一意化する
+  const uid = React.useId().replace(/[^a-zA-Z0-9]/g, '');
+  const clipId = `ballclip-${uid}`;
+  const gradId = `ballgrad-${uid}`;
   return (
     <svg viewBox="0 0 26 26" className={className} aria-hidden width="100%" height="100%">
       <defs>
-        <clipPath id="ballclip"><circle cx="13" cy="13" r="13" /></clipPath>
-        <radialGradient id="ballgrad" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#e6ff66" />
-          <stop offset="55%" stopColor="#c8ff00" />
-          <stop offset="100%" stopColor="#8fb800" />
+        <clipPath id={clipId}><circle cx="13" cy="13" r="13" /></clipPath>
+        <radialGradient id={gradId} cx="35%" cy="30%" r="80%">
+          <stop offset="0%" stopColor="#e8f76a" />
+          <stop offset="55%" stopColor="#cbe030" />
+          <stop offset="100%" stopColor="#9ab510" />
         </radialGradient>
       </defs>
-      <circle cx="13" cy="13" r="13" fill="url(#ballgrad)" />
-      <g clipPath="url(#ballclip)" fill="none" stroke="#0a1400" strokeWidth="1.8" opacity=".85">
+      <circle cx="13" cy="13" r="13" fill={`url(#${gradId})`} />
+      <g clipPath={`url(#${clipId})`} fill="none" stroke="#ffffff" strokeWidth="1.8" opacity=".9">
         <circle cx="-1" cy="-1" r="13" />
         <circle cx="27" cy="27" r="13" />
       </g>

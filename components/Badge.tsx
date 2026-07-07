@@ -7,7 +7,7 @@ const map: Record<Variant, string> = {
   ready: 'border-good/40 bg-good/10 text-good',
   busy: 'border-bad/40 bg-bad/10 text-bad',
   live: 'border-neon/50 bg-neon/15 text-neon',
-  done: 'border-white/10 bg-white/5 text-mute',
+  done: 'border-line bg-panel2 text-mute',
   muted: 'border-line bg-panel2 text-mute',
 };
 
@@ -33,8 +33,8 @@ export function StatusBadge({ status }: { status: Status }) {
 export function CatTag({ cat, label }: { cat: 'S' | 'D' | 'M'; label: string }) {
   const cls = {
     S: 'border-cyan/40 bg-cyan/10 text-cyan',
-    D: 'border-[#5b8cff]/40 bg-[#5b8cff]/10 text-[#7aa5ff]',
-    M: 'border-[#b78bfa]/40 bg-[#b78bfa]/10 text-[#c9a6ff]',
+    D: 'border-[#4263eb]/40 bg-[#4263eb]/10 text-[#3b5bdb]',
+    M: 'border-[#7048e8]/40 bg-[#7048e8]/10 text-[#6741d9]',
   }[cat];
   return <span className={`inline-block whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${cls}`}>{label}</span>;
 }
