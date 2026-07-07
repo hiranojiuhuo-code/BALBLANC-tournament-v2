@@ -213,7 +213,7 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
                 key={i}
                 type="button"
                 onClick={() => start(i)}
-                className="glow-neon min-h-12 rounded-xl bg-neon font-display text-sm font-extrabold text-white transition active:scale-95"
+                className="glow-neon min-h-12 rounded-xl bg-neon font-display text-sm font-extrabold text-[var(--on-accent)] transition active:scale-95"
               >
                 コート{i + 1}
               </button>

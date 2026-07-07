@@ -4,7 +4,8 @@ import type {
 
 export const CATS: Record<Cat, string> = { S: 'シングルス', D: 'ダブルス', M: 'ミックス' };
 
-export const PALETTE = ['#2f6df6', '#e8590c', '#2fa84f', '#7048e8', '#c2255c', '#0c8599', '#495057', '#d6336c'];
+// チームカラーはテーマごとに globals.css の --team-0..7 で定義（着せ替え対応）
+export const TEAM_COLOR_COUNT = 8;
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 9);
@@ -81,7 +82,7 @@ export const muById = (d: Data, id: string) => d.matchups.find((m) => m.id === i
 
 export function teamColor(d: Data, id: string): string {
   const i = d.teams.findIndex((t) => t.id === id);
-  return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+  return `var(--team-${(i < 0 ? 0 : i) % TEAM_COLOR_COUNT})`;
 }
 
 export function names(d: Data, ids: string[]): string {

@@ -33,8 +33,8 @@ export function StatusBadge({ status }: { status: Status }) {
 export function CatTag({ cat, label }: { cat: 'S' | 'D' | 'M'; label: string }) {
   const cls = {
     S: 'border-cyan/40 bg-cyan/10 text-cyan',
-    D: 'border-[#4263eb]/40 bg-[#4263eb]/10 text-[#3b5bdb]',
-    M: 'border-[#7048e8]/40 bg-[#7048e8]/10 text-[#6741d9]',
+    D: 'border-[var(--cat-d)]/40 bg-[var(--cat-d)]/10 text-[var(--cat-d-text)]',
+    M: 'border-[var(--cat-m)]/40 bg-[var(--cat-m)]/10 text-[var(--cat-m-text)]',
   }[cat];
   return <span className={`inline-block whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${cls}`}>{label}</span>;
 }

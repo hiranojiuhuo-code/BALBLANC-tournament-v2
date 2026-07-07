@@ -7,9 +7,9 @@ type Variant = 'primary' | 'ghost' | 'done' | 'danger';
 type Size = 'md' | 'sm';
 
 const styles: Record<Variant, string> = {
-  primary: 'bg-neon text-white glow-neon hover:brightness-105',
+  primary: 'bg-neon text-[var(--on-accent)] glow-neon hover:brightness-105',
   ghost: 'border border-line bg-panel2 text-ink hover:border-cyan/50',
-  done: 'bg-cyan text-white glow-cyan hover:brightness-105',
+  done: 'bg-cyan text-[var(--on-accent)] glow-cyan hover:brightness-105',
   danger: 'border border-bad/40 bg-bad/10 text-bad hover:bg-bad/20',
 };
 const sizes: Record<Size, string> = {

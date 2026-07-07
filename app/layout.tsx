@@ -18,9 +18,12 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // ハイドレーション前にテーマを適用して初期描画のちらつきを防ぐ
+  const themeInit = `try{var t=(JSON.parse(localStorage.getItem('tennis_taikousen_v3')||'{}').state||{}).theme;if(t)document.documentElement.dataset.theme=t;}catch(e){}`;
   return (
-    <html lang="ja" className={outfit.variable}>
+    <html lang="ja" className={outfit.variable} suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <AppShell>{children}</AppShell>
       </body>
     </html>

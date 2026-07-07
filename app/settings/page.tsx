@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { ensureMatchup, muLabel, syncMatchups, teamColor } from '@/lib/logic';
+import { THEMES } from '@/lib/themes';
 import { DEFAULT_MODELS } from '@/lib/vision';
 import type { Matchup, Provider } from '@/lib/types';
 import { Banner, Card, SectionTitle } from '@/components/Card';
@@ -36,6 +37,8 @@ export default function SettingsPage() {
   const resetAll = useStore((s) => s.resetAll);
   const resetStatus = useStore((s) => s.resetStatus);
   const loadSample = useStore((s) => s.loadSample);
+  const theme = useStore((s) => s.theme);
+  const setTheme = useStore((s) => s.setTheme);
 
   const [title, setTitle] = useState(data.title);
   const [courts, setCourts] = useState(data.courtCount);
@@ -88,6 +91,37 @@ export default function SettingsPage() {
 
   return (
     <div className="flex max-w-lg flex-col gap-4">
+      <Card>
+        <SectionTitle>テーマ（着せ替え）</SectionTitle>
+        <div className="grid grid-cols-3 gap-2">
+          {THEMES.map((t) => {
+            const active = theme === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTheme(t.id);
+                  toast(`${t.name}に着せ替えました`);
+                }}
+                className={`flex min-h-11 flex-col items-center gap-2 rounded-xl border p-3 transition active:scale-[.97] ${
+                  active ? 'glow-neon border-neon bg-neon/10' : 'border-line bg-panel2 hover:border-cyan/50'
+                }`}
+              >
+                <span className="flex overflow-hidden rounded-full border border-line">
+                  {t.swatch.map((c) => (
+                    <span key={c} className="h-5 w-5" style={{ background: c }} />
+                  ))}
+                </span>
+                <span className="text-xs font-extrabold leading-tight">{t.name}</span>
+                <span className="text-[10px] leading-tight text-mute">{t.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mb-0 mt-2.5 text-xs text-mute">この端末の表示だけが変わります（大会データには影響しません）。</p>
+      </Card>
+
       <Card>
         <SectionTitle>基本設定</SectionTitle>
         <div className="mb-3">

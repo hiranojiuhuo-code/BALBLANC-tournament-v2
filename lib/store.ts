@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot } from './types';
+import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot, ThemeId } from './types';
 import { defaultData, muId, muById, sampleData, syncMatchups, uid } from './logic';
+import { DEFAULT_THEME } from './themes';
 
 export const LS_KEY = 'tennis_taikousen_v3';
 export const LS_SAVES = 'tennis_taikousen_saves_v3';
@@ -38,6 +39,8 @@ interface StoreState {
   data: Data;
   hydrated: boolean;
   boardMu: string; // 進行ボードで選択中の対抗戦（'__all' = 全対抗戦）
+  theme: ThemeId;
+  setTheme: (t: ThemeId) => void;
   setBoardMu: (id: string) => void;
   mutate: (fn: (d: Data) => void) => void;
   applySnapshot: (p: SavePayload) => void;
@@ -53,6 +56,8 @@ export const useStore = create<StoreState>()(
       data: defaultData(),
       hydrated: false,
       boardMu: '__all',
+      theme: DEFAULT_THEME,
+      setTheme: (t) => set({ theme: t }),
       setBoardMu: (id) => set({ boardMu: id }),
 
       mutate: (fn) =>
@@ -144,7 +149,7 @@ export const useStore = create<StoreState>()(
     {
       name: LS_KEY,
       storage: createJSONStorage(() => migratingStorage),
-      partialize: (s) => ({ data: s.data }),
+      partialize: (s) => ({ data: s.data, theme: s.theme }),
       skipHydration: true, // SSG プリレンダとの hydration mismatch 回避。AppShell で手動 rehydrate
     },
   ),

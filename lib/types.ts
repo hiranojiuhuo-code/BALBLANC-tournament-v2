@@ -4,6 +4,7 @@ export type MatchGender = 'M' | 'F' | 'X';
 export type PlayerGender = 'M' | 'F' | 'X';
 export type Status = 'pending' | 'live' | 'done';
 export type Provider = 'gemini' | 'claude' | 'openai';
+export type ThemeId = 'wimbledon' | 'rg' | 'ao';
 
 export interface Team {
   id: string;

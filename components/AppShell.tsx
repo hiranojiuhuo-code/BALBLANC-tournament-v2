@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useStore } from '@/lib/store';
+import { applyTheme } from '@/lib/themes';
 import { PASS_HASH, sha256hex } from '@/lib/crypto';
 import type { Provider } from '@/lib/types';
 import { Toaster, toast } from './Toast';
@@ -35,7 +36,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [more, setMore] = useState(false);
   const hydrated = useStore((s) => s.hydrated);
   const title = useStore((s) => s.data.title);
+  const theme = useStore((s) => s.theme);
   const pathname = normPath(usePathname());
+
+  useEffect(() => {
+    if (hydrated) applyTheme(theme);
+  }, [hydrated, theme]);
 
   useEffect(() => {
     if (localStorage.getItem('gate_ok') === PASS_HASH) setLocked(false);
