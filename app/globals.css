@@ -4,15 +4,15 @@
    Tailwindユーティリティは var(--color-*) を実行時参照するため、
    html[data-theme=...] で変数を上書きするとサイト全体が着せ替わる */
 @theme {
-  --color-bg: #f4f8f2;
+  --color-bg: #f1f7ee;
   --color-panel: #ffffff;
-  --color-panel2: #edf4ea;
-  --color-line: #d7e4d1;
-  --color-ink: #17251c;
-  --color-mute: #5f7568;
-  --color-neon: #1f8a3d;   /* プライマリ（CTA / live / アクティブ） */
-  --color-cyan: #6741d9;   /* セカンダリ（サブ操作 / リンク / Sタグ） */
-  --color-good: #2b8a3e;
+  --color-panel2: #e6f1e0;
+  --color-line: #c6dcbd;
+  --color-ink: #14231a;
+  --color-mute: #57705f;
+  --color-neon: #0e8c3a;   /* プライマリ（CTA / live / アクティブ） */
+  --color-cyan: #6d28d9;   /* セカンダリ（サブ操作 / リンク / Sタグ） */
+  --color-good: #1f8539;
   --color-warn: #e8590c;
   --color-bad: #e03131;
   --font-display: var(--font-outfit), -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
@@ -21,38 +21,38 @@
 :root {
   color-scheme: light;
   --on-accent: #ffffff;                 /* プライマリ/セカンダリ上の文字色 */
-  --grid-line: rgba(31, 138, 61, 0.05); /* 背景グリッド */
-  --court-line: rgba(31, 138, 61, 0.3); /* コートカードのライン */
-  --glow-1: 0 1px 2px rgba(23, 37, 28, 0.06), 0 4px 16px rgba(31, 138, 61, 0.28);
-  --glow-2: 0 1px 2px rgba(23, 37, 28, 0.06), 0 4px 16px rgba(103, 65, 217, 0.22);
-  --toast-bg: #17251c; --toast-fg: #ffffff; --toast-border: rgba(31, 138, 61, 0.5);
+  --grid-line: rgba(14, 140, 58, 0.07); /* 背景グリッド */
+  --court-line: rgba(14, 140, 58, 0.4); /* コートカードのライン */
+  --glow-1: 0 1px 2px rgba(20, 35, 26, 0.06), 0 4px 16px rgba(14, 140, 58, 0.32);
+  --glow-2: 0 1px 2px rgba(20, 35, 26, 0.06), 0 4px 16px rgba(109, 40, 217, 0.25);
+  --toast-bg: #14231a; --toast-fg: #ffffff; --toast-border: rgba(14, 140, 58, 0.55);
   --cat-d: #4263eb; --cat-d-text: #3b5bdb;  /* 種目タグ D */
   --cat-m: #7048e8; --cat-m-text: #6741d9;  /* 種目タグ ミックス */
   --team-0: #2f6df6; --team-1: #e8590c; --team-2: #2fa84f; --team-3: #7048e8;
   --team-4: #c2255c; --team-5: #0c8599; --team-6: #495057; --team-7: #d6336c;
 }
 
-/* ---- 全仏オープン: 灼熱のパリの赤土クレー × 陽光のサンド ---- */
+/* ---- 全仏オープン: 灼熱のパリの赤土クレー。濃く激しいテラコッタ ---- */
 html[data-theme='rg'] {
-  --color-bg: #f7efe4;
-  --color-panel: #fffcf6;
-  --color-panel2: #f3e7d3;
-  --color-line: #e6d2b6;
-  --color-ink: #35211a;
-  --color-mute: #8b7261;
-  --color-neon: #c2440e;
-  --color-cyan: #0f7b63;
-  --color-good: #34825b;
-  --color-warn: #a61e4d;
-  --color-bad: #d9480f;
-  --grid-line: rgba(194, 68, 14, 0.06);
-  --court-line: rgba(194, 68, 14, 0.35);
-  --glow-1: 0 1px 2px rgba(53, 33, 26, 0.08), 0 4px 16px rgba(194, 68, 14, 0.3);
-  --glow-2: 0 1px 2px rgba(53, 33, 26, 0.08), 0 4px 16px rgba(15, 123, 99, 0.25);
-  --toast-bg: #35211a; --toast-fg: #ffffff; --toast-border: rgba(194, 68, 14, 0.55);
-  --cat-d: #b8580f; --cat-d-text: #a04a08;
+  --color-bg: #f0ddc3;
+  --color-panel: #fff8ec;
+  --color-panel2: #eed7b3;
+  --color-line: #d9b483;
+  --color-ink: #2e180d;
+  --color-mute: #7d5f47;
+  --color-neon: #b5310a;
+  --color-cyan: #0a7a5c;
+  --color-good: #2e7d4e;
+  --color-warn: #9c1a45;
+  --color-bad: #c92a2a;
+  --grid-line: rgba(181, 49, 10, 0.1);
+  --court-line: rgba(181, 49, 10, 0.5);
+  --glow-1: 0 1px 2px rgba(46, 24, 13, 0.1), 0 4px 18px rgba(181, 49, 10, 0.4);
+  --glow-2: 0 1px 2px rgba(46, 24, 13, 0.1), 0 4px 16px rgba(10, 122, 92, 0.3);
+  --toast-bg: #2e180d; --toast-fg: #ffffff; --toast-border: rgba(181, 49, 10, 0.65);
+  --cat-d: #a8480a; --cat-d-text: #8f3d06;
   --cat-m: #9c36b5; --cat-m-text: #862e9c;
-  --team-0: #1971c2; --team-1: #c2440e; --team-2: #2b8a3e; --team-3: #7048e8;
+  --team-0: #1971c2; --team-1: #b5310a; --team-2: #2b8a3e; --team-3: #7048e8;
   --team-4: #c2255c; --team-5: #0c8599; --team-6: #5c5147; --team-7: #d6336c;
 }
 
