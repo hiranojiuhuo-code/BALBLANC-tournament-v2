@@ -23,6 +23,11 @@
   --on-accent: #ffffff;                 /* プライマリ/セカンダリ上の文字色 */
   --grid-line: rgba(14, 140, 58, 0.07); /* 背景グリッド */
   --court-line: rgba(14, 140, 58, 0.4); /* コートカードのライン */
+  /* 芝の質感: 縦方向の草目ノイズ ＋ 刈り込みストライプ（ウィンブルドン名物の濃淡バンド） */
+  --bg-layers:
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8 0.12' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.06'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.32'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.12'/%3E%3CfeFuncA type='linear' slope='0.14'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgba(15, 104, 45, 0.05) 0px, rgba(15, 104, 45, 0.05) 52px, rgba(255, 255, 255, 0.25) 52px, rgba(255, 255, 255, 0.25) 104px);
+  --bg-sizes: 220px 220px, auto;
   --glow-1: 0 1px 2px rgba(20, 35, 26, 0.06), 0 4px 16px rgba(14, 140, 58, 0.32);
   --glow-2: 0 1px 2px rgba(20, 35, 26, 0.06), 0 4px 16px rgba(109, 40, 217, 0.25);
   --toast-bg: #14231a; --toast-fg: #ffffff; --toast-border: rgba(14, 140, 58, 0.55);
@@ -47,6 +52,12 @@ html[data-theme='rg'] {
   --color-bad: #c92a2a;
   --grid-line: rgba(181, 49, 10, 0.1);
   --court-line: rgba(181, 49, 10, 0.5);
+  /* 赤土の質感: 粗い砂粒 ＋ ブラシで均した横筋 ＋ パリの陽光 */
+  --bg-layers:
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.45'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.15'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.03'/%3E%3CfeFuncA type='linear' slope='0.2'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='100'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.28' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.55'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.2'/%3E%3CfeFuncB type='linear' slope='0' intercept='0.05'/%3E%3CfeFuncA type='linear' slope='0.12'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)'/%3E%3C/svg%3E"),
+    radial-gradient(900px 480px at 85% -60px, rgba(255, 199, 130, 0.45), transparent 65%);
+  --bg-sizes: 200px 200px, 420px 140px, auto;
   --glow-1: 0 1px 2px rgba(46, 24, 13, 0.1), 0 4px 18px rgba(181, 49, 10, 0.4);
   --glow-2: 0 1px 2px rgba(46, 24, 13, 0.1), 0 4px 16px rgba(10, 122, 92, 0.3);
   --toast-bg: #2e180d; --toast-fg: #ffffff; --toast-border: rgba(181, 49, 10, 0.65);
@@ -73,6 +84,13 @@ html[data-theme='ao'] {
   --on-accent: #041a2e;
   --grid-line: rgba(77, 171, 247, 0.06);
   --court-line: rgba(77, 171, 247, 0.3);
+  /* ハードコートの質感: アクリル表面の微細スペックル ＋ ナイトセッションの照明光 ＋ テックグリッド */
+  --bg-layers:
+    url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0' intercept='0.55'/%3E%3CfeFuncG type='linear' slope='0' intercept='0.8'/%3E%3CfeFuncB type='linear' slope='0' intercept='1'/%3E%3CfeFuncA type='linear' slope='0.09'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23t)'/%3E%3C/svg%3E"),
+    radial-gradient(1300px 640px at 50% -180px, rgba(77, 171, 247, 0.18), transparent 62%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  --bg-sizes: 220px 220px, auto, 36px 36px, 36px 36px;
   --glow-1: 0 0 0 1px rgba(34, 184, 240, 0.35), 0 0 18px rgba(34, 184, 240, 0.25);
   --glow-2: 0 0 14px rgba(77, 171, 247, 0.3);
   --toast-bg: #0c2140; --toast-fg: #eaf2ff; --toast-border: rgba(34, 184, 240, 0.6);
@@ -88,10 +106,8 @@ body {
   margin: 0;
   background-color: var(--color-bg);
   color: var(--color-ink);
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 36px 36px;
+  background-image: var(--bg-layers);
+  background-size: var(--bg-sizes);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   font-size: 15px;
   line-height: 1.55;
