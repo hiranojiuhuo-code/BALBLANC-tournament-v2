@@ -140,6 +140,8 @@ export const useStore = create<StoreState>()(
             m.court = null;
             m.scoreA = null;
             m.scoreB = null;
+            m.tbA = null;
+            m.tbB = null;
           });
           return { data: d };
         }),

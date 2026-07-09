@@ -35,8 +35,10 @@ export interface Match {
   sideB: string[];
   court: number | null;
   status: Status;
-  scoreA: number | null;
+  scoreA: number | null; // 獲得ゲーム数
   scoreB: number | null;
+  tbA?: number | null; // タイブレークの獲得ポイント（7-6/6-7時のみ。任意）
+  tbB?: number | null;
 }
 
 export interface AiConfig {

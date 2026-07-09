@@ -122,6 +122,9 @@ export default function MatchesPage() {
                         <span style={{ color: aw ? teamColor(data, mu.aId) : undefined }}>{m.scoreA}</span>
                         <span className="mx-1 text-mute">-</span>
                         <span style={{ color: bw ? teamColor(data, mu.bId) : undefined }}>{m.scoreB}</span>
+                        {m.tbA != null && m.tbB != null && (
+                          <sup className="ml-0.5 text-[9px] text-mute">({Math.min(m.tbA, m.tbB)})</sup>
+                        )}
                       </span>
                     )}
                   </div>
@@ -316,6 +319,8 @@ function EditMatchModal({ matchId, onClose }: { matchId: string | null; onClose:
                       t.court = null;
                       t.scoreA = null;
                       t.scoreB = null;
+                      t.tbA = null;
+                      t.tbB = null;
                     }
                   });
                   onClose();
