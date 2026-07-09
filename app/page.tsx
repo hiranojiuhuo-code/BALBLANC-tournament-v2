@@ -121,9 +121,9 @@ export default function BoardPage() {
           <Pill>空きコート {fc.length}面</Pill>
         </SectionTitle>
         {ready.length ? (
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {ready.map((m) => (
-              <MatchCard key={m.id} match={m} state="ready" onClick={() => setAssignId(m.id)} />
+              <MatchCard key={m.id} match={m} state="ready" compact onClick={() => setAssignId(m.id)} />
             ))}
           </div>
         ) : (
@@ -137,12 +137,13 @@ export default function BoardPage() {
           <SectionTitle>
             <span className="text-warn">出場者が試合中で組めない（{blocked.length}）</span>
           </SectionTitle>
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {blocked.map((m) => (
               <MatchCard
                 key={m.id}
                 match={m}
                 state="busy"
+                compact
                 conflicts={conflictNames(data, m, busy)}
                 onClick={() => setAssignId(m.id)}
               />
