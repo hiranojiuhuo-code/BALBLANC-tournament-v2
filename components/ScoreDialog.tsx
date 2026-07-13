@@ -52,10 +52,14 @@ export function ScoreDialog({ matchId, mode, onClose }: {
     toast(`${matchLabel(m)}: ${a}-${b} で記録しました`);
   };
 
+  // PCのIME(日本語入力)で入る全角数字を半角化してから数字以外を除去
+  const digits = (s: string) =>
+    s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/\D/g, '');
+
   // ゲーム数: 0〜7の1桁のみ。入力したら次の欄へ
   const onGame = (set: (v: string) => void, next?: React.RefObject<HTMLInputElement | null>) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const c = e.target.value.replace(/\D/g, '').slice(-1);
+      const c = digits(e.target.value).slice(-1);
       if (c !== '' && Number(c) > 7) return;
       set(c);
       // 次の欄へ。TB欄はこの入力で初めて描画されるため、再レンダー後にフォーカスする
@@ -64,11 +68,11 @@ export function ScoreDialog({ matchId, mode, onClose }: {
 
   // タイブレーク: 0〜99の2桁まで
   const onTb = (set: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    set(e.target.value.replace(/\D/g, '').slice(0, 2));
+    set(digits(e.target.value).slice(0, 2));
   };
 
   const numInput =
-    'font-num h-16 w-full rounded-xl border border-line bg-panel text-center text-4xl font-extrabold caret-transparent focus:border-cyan/60 focus:outline-none';
+    'font-num h-16 w-full rounded-xl border border-line bg-panel text-center text-4xl font-extrabold focus:border-cyan/60 focus:outline-none';
 
   return (
     <Modal title={`${matchLabel(m)} ${mode === 'finish' ? '結果入力' : 'スコア修正'}`} onClose={onClose}>
