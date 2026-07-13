@@ -6,7 +6,7 @@ import AppShell from '@/components/AppShell';
 const outfit = Outfit({ subsets: ['latin'], weight: ['600', '700', '800'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-  title: '対抗戦 進行管理',
+  title: 'BALBLANC 試合進行',
   description: 'テニス対抗戦の進行管理ボード。出場者の被りを検出して、いま組める試合がすぐわかる。',
 };
 

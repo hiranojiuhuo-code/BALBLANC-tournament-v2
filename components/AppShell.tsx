@@ -35,7 +35,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(true);
   const [more, setMore] = useState(false);
   const hydrated = useStore((s) => s.hydrated);
-  const title = useStore((s) => s.data.title);
   const theme = useStore((s) => s.theme);
   const pathname = normPath(usePathname());
 
@@ -75,7 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (locked) return <Gate onUnlock={() => setLocked(false)} />;
 
-  const appTitle = title || '対抗戦 進行管理';
+  const appTitle = 'BALBLANC 試合進行';
 
   return (
     <div className="min-h-dvh">
@@ -217,7 +216,7 @@ function Gate({ onUnlock }: { onUnlock: () => void }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg p-5">
       <div className="anim-modal w-full max-w-xs rounded-3xl border border-line border-t-2 border-t-neon bg-panel p-8 text-center shadow-2xl">
         <div className="mx-auto mb-4 h-14 w-14"><BallLogo /></div>
-        <h2 className="font-display text-xl font-extrabold">対抗戦 進行管理</h2>
+        <h2 className="font-display text-xl font-extrabold">BALBLANC 試合進行</h2>
         <p className="mb-5 mt-1 text-xs text-mute">運営パスコードを入力してください</p>
         <input
           ref={ref}
