@@ -6,9 +6,12 @@ import {
   busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
   muById, muLabel, names, teamColor, tName,
 } from '@/lib/logic';
+import { matchPace, playerPaces, progressOf, recommendOrder } from '@/lib/pacing';
+import { useNow } from '@/lib/useNow';
 import type { Match } from '@/lib/types';
 import { Badge } from '@/components/Badge';
 import { Banner, Pill, SectionTitle } from '@/components/Card';
+import { ProgressPanel } from '@/components/ProgressPanel';
 import { Button } from '@/components/Button';
 import { Chip, ChipRow } from '@/components/Chip';
 import { EmptyNote, EmptyState } from '@/components/EmptyState';
@@ -25,6 +28,8 @@ export default function BoardPage() {
   const setBoardMu = useStore((s) => s.setBoardMu);
   const [assignId, setAssignId] = useState<string | null>(null);
   const [finishId, setFinishId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<'rec' | 'table'>('rec');
+  const now = useNow();
 
   if (data.matchups.length === 0) {
     return (
@@ -53,12 +58,17 @@ export default function BoardPage() {
       data.matchups.findIndex((x) => x.id === a.matchupId) - data.matchups.findIndex((x) => x.id === b.matchupId) ||
       a.order - b.order,
   );
-  const ready = pending.filter((m) => conflictNames(data, m, busy).length === 0);
+  const readyRaw = pending.filter((m) => conflictNames(data, m, busy).length === 0);
   const blocked = pending.filter((m) => conflictNames(data, m, busy).length > 0);
   const scope = curMu === '__all' ? data.matches : matchesOf(data, curMu);
-  const doneCount = scope.filter((m) => m.status === 'done').length;
   const selMu = curMu !== '__all' ? muById(data, curMu) : undefined;
   const selScore = selMu ? matchupScore(data, selMu.id) : null;
+
+  // 待ち時間・連戦をもとに「次に入れる順」を決める（組み合わせ自体は変えない）
+  const paces = playerPaces(data, now);
+  const ready = sortMode === 'rec' ? recommendOrder(data, readyRaw, paces) : readyRaw;
+  const recCount = sortMode === 'rec' ? Math.min(fc.length, ready.length) : 0;
+  const prog = progressOf(scope, data.courtCount, now);
 
   return (
     <div>
@@ -82,10 +92,14 @@ export default function BoardPage() {
         </div>
       )}
 
+      <ProgressPanel p={prog} courts={data.courtCount} now={now} />
+
       {/* コート（全対抗戦共通） */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: data.courtCount }, (_, i) => {
           const m = liveOnCourt(data, i);
+          const started = m?.startedAt ? new Date(m.startedAt).getTime() : null;
+          const elapsed = started == null ? null : Math.max(0, Math.round((now - started) / 60000));
           return (
             <div
               key={i}
@@ -95,7 +109,13 @@ export default function BoardPage() {
             >
               <div className="relative z-10 flex items-center justify-between gap-1">
                 <span className="font-display text-sm font-extrabold">コート{i + 1}</span>
-                {m ? <Badge variant="live">進行中</Badge> : <Badge variant="ready">空き</Badge>}
+                {m ? (
+                  <Badge variant={elapsed != null && elapsed > prog.avgMin * 1.6 ? 'warn' : 'live'}>
+                    {elapsed != null ? `${elapsed}分経過` : '進行中'}
+                  </Badge>
+                ) : (
+                  <Badge variant="ready">空き</Badge>
+                )}
               </div>
               {m ? (
                 <>
@@ -119,11 +139,26 @@ export default function BoardPage() {
         <SectionTitle>
           <span className="text-good">いま組める試合（{ready.length}）</span>
           <Pill>空きコート {fc.length}面</Pill>
+          <button
+            type="button"
+            onClick={() => setSortMode(sortMode === 'rec' ? 'table' : 'rec')}
+            className="ml-auto rounded-lg border border-line bg-panel2 px-2.5 py-1 text-[11px] font-bold text-mute active:scale-95"
+          >
+            {sortMode === 'rec' ? 'おすすめ順' : '対戦表の順'}
+          </button>
         </SectionTitle>
         {ready.length ? (
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-            {ready.map((m) => (
-              <MatchCard key={m.id} match={m} state="ready" compact onClick={() => setAssignId(m.id)} />
+            {ready.map((m, i) => (
+              <MatchCard
+                key={m.id}
+                match={m}
+                state="ready"
+                compact
+                pace={matchPace(data, m, paces)}
+                recommended={i < recCount}
+                onClick={() => setAssignId(m.id)}
+              />
             ))}
           </div>
         ) : (
@@ -153,7 +188,7 @@ export default function BoardPage() {
       )}
 
       <EmptyNote>
-        完了 {doneCount} / 全 {scope.length} 試合
+        完了 {prog.done} / 全 {prog.total} 試合
       </EmptyNote>
 
       {assignId && <AssignModal key={assignId} matchId={assignId} onClose={() => setAssignId(null)} />}
@@ -179,6 +214,8 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
       if (t) {
         t.court = court;
         t.status = 'live';
+        t.startedAt = new Date().toISOString();
+        t.endedAt = null;
       }
     });
     onClose();

@@ -321,6 +321,8 @@ function EditMatchModal({ matchId, onClose }: { matchId: string | null; onClose:
                       t.scoreB = null;
                       t.tbA = null;
                       t.tbB = null;
+                      t.startedAt = null;
+                      t.endedAt = null;
                     }
                   });
                   onClose();

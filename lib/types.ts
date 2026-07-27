@@ -39,6 +39,8 @@ export interface Match {
   scoreB: number | null;
   tbA?: number | null; // タイブレークの獲得ポイント（7-6/6-7時のみ。任意）
   tbB?: number | null;
+  startedAt?: string | null; // コートに入れた時刻（ISO）。待ち時間・所要時間の算出に使う
+  endedAt?: string | null; // 結果を確定した時刻（ISO）
 }
 
 export interface AiConfig {

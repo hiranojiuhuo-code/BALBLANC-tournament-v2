@@ -46,6 +46,7 @@ export function ScoreDialog({ matchId, mode, onClose }: {
       if (mode === 'finish') {
         t.status = 'done';
         t.court = null;
+        t.endedAt = new Date().toISOString();
       }
     });
     onClose();

@@ -142,6 +142,8 @@ export const useStore = create<StoreState>()(
             m.scoreB = null;
             m.tbA = null;
             m.tbB = null;
+            m.startedAt = null;
+            m.endedAt = null;
           });
           return { data: d };
         }),
