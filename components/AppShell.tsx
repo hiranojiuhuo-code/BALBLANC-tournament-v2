@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { applyTheme } from '@/lib/themes';
 import { PASS_HASH, sha256hex } from '@/lib/crypto';
-import { parseJoinHash } from '@/lib/sync';
+import { loadSyncConfig, parseJoinHash, type SyncConfig } from '@/lib/sync';
 import type { Provider } from '@/lib/types';
 import { Toaster, toast } from './Toast';
 import { Button } from './Button';
+import { Confirm } from './Modal';
 import { SyncBadge } from './SyncBadge';
 import {
   BallLogo, IconBoard, IconCamera, IconChart, IconGear, IconList, IconMore, IconSave, IconTrophy, IconUsers,
@@ -33,9 +34,15 @@ function normPath(p: string | null): string {
   return s === '' ? '/' : s;
 }
 
+async function joinRoom(join: SyncConfig) {
+  await useStore.getState().enableSync(join);
+  toast(`同期に参加しました（部屋 ${join.room.slice(0, 6)}…）`);
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(true);
   const [more, setMore] = useState(false);
+  const [joinAsk, setJoinAsk] = useState<SyncConfig | null>(null);
   const hydrated = useStore((s) => s.hydrated);
   const theme = useStore((s) => s.theme);
   const pathname = normPath(usePathname());
@@ -44,40 +51,69 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (hydrated) applyTheme(theme);
   }, [hydrated, theme]);
 
+  /*
+   * URLハッシュ（#s=参加リンク / #k=APIキー）を処理する。
+   * リンクを踏んだ端末がすでにこのアプリを開いていると、同じURLのハッシュが変わるだけで
+   * ブラウザは再読み込みしない。マウント時だけ見ていると「タップしたのに参加できていない」
+   * のに同期バッジは前のままになるので、hashchange でも同じ処理を通す。
+   */
+  const consumeHash = useCallback(async () => {
+    const hash = location.hash;
+    const join = parseJoinHash(hash);
+    if (join) {
+      history.replaceState(null, '', location.pathname + location.search);
+      const cur = loadSyncConfig();
+      if (cur && cur.dbUrl === join.dbUrl && cur.room === join.room) {
+        toast('すでにこの部屋に参加しています');
+        return;
+      }
+      // 参加すると部屋の内容を採用するので、手元に進行データがあるなら黙って消さない
+      const d = useStore.getState().data;
+      if (d.matches.length > 0 || d.players.length > 0) {
+        setJoinAsk(join);
+        return;
+      }
+      await joinRoom(join);
+      return;
+    }
+    // #k=APIキー&p=プロバイダ&m=モデル でキーを受け取る（設定リンク機能）
+    if (hash.startsWith('#k=')) {
+      try {
+        const q = new URLSearchParams(hash.slice(1));
+        const k = q.get('k');
+        if (k) {
+          useStore.getState().mutate((d) => {
+            d.ai.key = k;
+            const p = q.get('p');
+            if (p) d.ai.provider = p as Provider;
+            const m = q.get('m');
+            if (m) d.ai.model = m;
+          });
+          history.replaceState(null, '', location.pathname + location.search); // キーをURLから消す
+          setTimeout(() => toast('APIキーを設定しました'), 400);
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
+
   useEffect(() => {
     if (localStorage.getItem('gate_ok') === PASS_HASH) setLocked(false);
     (async () => {
       await useStore.persist.rehydrate();
       useStore.setState({ hydrated: true });
-      // 共有リンク #s=<DB URL>|<部屋コード> から同期に参加する
-      const join = parseJoinHash(location.hash);
-      if (join) {
-        history.replaceState(null, '', location.pathname + location.search);
-        await useStore.getState().enableSync(join);
-        toast(`同期に参加しました（部屋 ${join.room.slice(0, 6)}…）`);
-      } else {
-        useStore.getState().initSync();
-      }
-      // URLハッシュ #k=APIキー&p=プロバイダ&m=モデル でキーを受け取る（設定リンク機能）
-      if (location.hash.startsWith('#k=')) {
-        try {
-          const q = new URLSearchParams(location.hash.slice(1));
-          const k = q.get('k');
-          if (k) {
-            useStore.getState().mutate((d) => {
-              d.ai.key = k;
-              const p = q.get('p');
-              if (p) d.ai.provider = p as Provider;
-              const m = q.get('m');
-              if (m) d.ai.model = m;
-            });
-            history.replaceState(null, '', location.pathname + location.search); // キーをURLから消す
-            setTimeout(() => toast('APIキーを設定しました'), 400);
-          }
-        } catch { /* ignore */ }
-      }
+      // 先に今の設定で繋いでおく（設定が無ければ何もしない）。参加リンクの確認を
+      // キャンセルしたときに、元の部屋から切れたままにならないようにするため。
+      useStore.getState().initSync();
+      await consumeHash();
     })();
-  }, []);
+  }, [consumeHash]);
+
+  // すでに開いている端末で参加リンクを踏んだ場合はここで拾う
+  useEffect(() => {
+    const onHash = () => { void consumeHash(); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [consumeHash]);
 
   useEffect(() => {
     setMore(false);
@@ -197,6 +233,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
+      )}
+
+      {joinAsk && (
+        <Confirm
+          message={`別の部屋の参加リンクを開きました（部屋 ${joinAsk.room.slice(0, 6)}…）。\n参加すると、この端末の進行データは参加先の部屋の内容に置き換わります。`}
+          okLabel="参加する"
+          onOk={() => { void joinRoom(joinAsk); }}
+          onClose={() => setJoinAsk(null)}
+        />
       )}
 
       <Toaster />
