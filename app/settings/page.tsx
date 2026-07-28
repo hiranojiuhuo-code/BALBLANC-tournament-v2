@@ -9,6 +9,7 @@ import type { Matchup, Provider } from '@/lib/types';
 import { Banner, Card, SectionTitle } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { CountStepper } from '@/components/Stepper';
+import { SyncCard } from '@/components/SyncCard';
 import { Confirm, Prompt } from '@/components/Modal';
 import { toast } from '@/components/Toast';
 
@@ -121,6 +122,8 @@ export default function SettingsPage() {
         </div>
         <p className="mb-0 mt-2.5 text-xs text-mute">この端末の表示だけが変わります（大会データには影響しません）。</p>
       </Card>
+
+      <SyncCard />
 
       <Card>
         <SectionTitle>基本設定</SectionTitle>

@@ -3,6 +3,10 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot, ThemeId } from './types';
 import { defaultData, muId, muById, sampleData, syncMatchups, uid } from './logic';
 import { DEFAULT_THEME } from './themes';
+import {
+  loadSyncConfig, pushMutation, saveSyncConfig, startSync, stopSync,
+  type SyncConfig, type SyncStatus,
+} from './sync';
 
 export const LS_KEY = 'tennis_taikousen_v3';
 export const LS_SAVES = 'tennis_taikousen_saves_v3';
@@ -40,6 +44,9 @@ interface StoreState {
   hydrated: boolean;
   boardMu: string; // 進行ボードで選択中の対抗戦（'__all' = 全対抗戦）
   theme: ThemeId;
+  syncStatus: SyncStatus;
+  syncRoom: string;
+  syncMsg: string;
   setTheme: (t: ThemeId) => void;
   setBoardMu: (id: string) => void;
   mutate: (fn: (d: Data) => void) => void;
@@ -48,38 +55,61 @@ interface StoreState {
   resetAll: () => void;
   resetStatus: () => void;
   loadSample: () => void;
+  enableSync: (c: SyncConfig) => Promise<void>;
+  disableSync: () => void;
+  initSync: () => void;
+}
+
+// 全データを置き換える操作も「変更関数」として表現する。こうしておくと
+// 同期時にサーバの最新状態の上へそのまま載せ直せる。
+function replaceAll(d: Data, p: SavePayload): void {
+  d.teams = p.teams;
+  d.players = p.players;
+  d.matchups = p.matchups;
+  d.matches = p.matches;
+  d.courtCount = p.courtCount;
+  d.title = p.title;
 }
 
 export const useStore = create<StoreState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       data: defaultData(),
       hydrated: false,
       boardMu: '__all',
       theme: DEFAULT_THEME,
+      syncStatus: 'off',
+      syncRoom: '',
+      syncMsg: '',
       setTheme: (t) => set({ theme: t }),
       setBoardMu: (id) => set({ boardMu: id }),
 
-      mutate: (fn) =>
+      // ローカル優先: 手元に即反映し、同期中なら同じ操作を裏で送る
+      mutate: (fn) => {
         set((s) => {
           const d = structuredClone(s.data);
           fn(d);
           return { data: d };
-        }),
+        });
+        pushMutation(fn);
+      },
 
       // 保存データ読込。ai（キー含む）は保持する
-      applySnapshot: (p) =>
-        set((s) => {
-          const ai = s.data.ai;
-          const d: Data = { ...defaultData(), ...structuredClone(p), ai };
-          return { data: d, boardMu: '__all' };
-        }),
+      applySnapshot: (p) => {
+        const snap = structuredClone(p);
+        get().mutate((d) => replaceAll(d, structuredClone(snap)));
+        set({ boardMu: '__all' });
+      },
 
-      // 写真取り込み結果の反映（同名チームのid共有・左右入替の整合を含む。参照実装の applyExtraction を移植）
+      // 写真取り込み結果の反映（同名チームのid共有・左右入替の整合を含む）
       applyExtraction: (built) => {
+        // 同期でやり直されても同じ結果になるよう、idは先に決めておく
+        const pool = Array.from({ length: built.reduce((n, b) => n + b.matches.length * 4 + 4, 8) }, () => uid());
         let lastMid: string | null = null;
-        set((s) => {
-          const d = structuredClone(s.data);
+
+        const apply = (d: Data) => {
+          let pi = 0;
+          const nid = () => pool[pi++] ?? uid();
           const reg: Record<string, string> = {};
           const findTeamByName = (name: string) => {
             const n = (name || '').trim();
@@ -89,7 +119,7 @@ export const useStore = create<StoreState>()(
           const getTeam = (name: string) => {
             let t = findTeamByName(name);
             if (!t) {
-              t = { id: uid(), name: (name || 'チーム').trim() };
+              t = { id: nid(), name: (name || 'チーム').trim() };
               d.teams.push(t);
             }
             return t;
@@ -99,7 +129,7 @@ export const useStore = create<StoreState>()(
             if (reg[key]) return reg[key];
             let p = d.players.find((x) => x.teamId === teamId && x.name === name);
             if (!p) {
-              p = { id: uid(), teamId, name, gender };
+              p = { id: nid(), teamId, name, gender };
               d.players.push(p);
             } else if (p.gender === 'X' && gender !== 'X') p.gender = gender;
             reg[key] = p.id;
@@ -116,25 +146,33 @@ export const useStore = create<StoreState>()(
               const taIds = m.aNames.map((n) => getP(ta.id, n, m.gender));
               const tbIds = m.bNames.map((n) => getP(tb.id, n, m.gender));
               d.matches.push({
-                id: uid(), matchupId: mid, cat: m.cat, no: m.no, gender: m.gender, order: i,
+                id: nid(), matchupId: mid, cat: m.cat, no: m.no, gender: m.gender, order: i,
                 sideA: aIsFirst ? taIds : tbIds, sideB: aIsFirst ? tbIds : taIds,
                 court: null, status: 'pending', scoreA: null, scoreB: null,
+                startedAt: null, endedAt: null,
               });
             });
             lastMid = mid;
           });
           syncMatchups(d);
-          return { data: d };
-        });
+        };
+
+        get().mutate(apply);
         return lastMid;
       },
 
       // リセット時も ai.key は保持
-      resetAll: () => set((s) => ({ data: { ...defaultData(), ai: s.data.ai }, boardMu: '__all' })),
+      resetAll: () => {
+        const base = defaultData();
+        get().mutate((d) => replaceAll(d, {
+          teams: [], players: [], matchups: [], matches: [],
+          courtCount: base.courtCount, title: base.title,
+        }));
+        set({ boardMu: '__all' });
+      },
 
-      resetStatus: () =>
-        set((s) => {
-          const d = structuredClone(s.data);
+      resetStatus: () => {
+        get().mutate((d) => {
           d.matches.forEach((m) => {
             m.status = 'pending';
             m.court = null;
@@ -145,10 +183,38 @@ export const useStore = create<StoreState>()(
             m.startedAt = null;
             m.endedAt = null;
           });
-          return { data: d };
-        }),
+        });
+      },
 
-      loadSample: () => set((s) => ({ data: { ...sampleData(), ai: s.data.ai }, boardMu: '__all' })),
+      loadSample: () => {
+        const s = sampleData();
+        get().mutate((d) => replaceAll(d, structuredClone(s)));
+        set({ boardMu: '__all' });
+      },
+
+      /* ---------------- 端末間同期 ---------------- */
+      enableSync: async (c) => {
+        saveSyncConfig(c);
+        set({ syncRoom: c.room, syncStatus: 'connecting', syncMsg: '' });
+        await startSync(c, {
+          getLocal: () => get().data,
+          adopt: (p) =>
+            set((s) => ({ data: { ...defaultData(), ...structuredClone(p), ai: s.data.ai } })),
+          onStatus: (st, msg) => set({ syncStatus: st, syncMsg: msg || '' }),
+        });
+      },
+
+      disableSync: () => {
+        stopSync();
+        saveSyncConfig(null);
+        set({ syncStatus: 'off', syncRoom: '', syncMsg: '' });
+      },
+
+      // 起動時、保存済みの設定があれば自動で接続する
+      initSync: () => {
+        const c = loadSyncConfig();
+        if (c) void get().enableSync(c);
+      },
     }),
     {
       name: LS_KEY,

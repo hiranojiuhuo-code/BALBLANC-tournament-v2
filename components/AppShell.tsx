@@ -6,9 +6,11 @@ import { usePathname } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { applyTheme } from '@/lib/themes';
 import { PASS_HASH, sha256hex } from '@/lib/crypto';
+import { parseJoinHash } from '@/lib/sync';
 import type { Provider } from '@/lib/types';
 import { Toaster, toast } from './Toast';
 import { Button } from './Button';
+import { SyncBadge } from './SyncBadge';
 import {
   BallLogo, IconBoard, IconCamera, IconChart, IconGear, IconList, IconMore, IconSave, IconTrophy, IconUsers,
 } from './icons';
@@ -47,6 +49,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     (async () => {
       await useStore.persist.rehydrate();
       useStore.setState({ hydrated: true });
+      // 共有リンク #s=<DB URL>|<部屋コード> から同期に参加する
+      const join = parseJoinHash(location.hash);
+      if (join) {
+        history.replaceState(null, '', location.pathname + location.search);
+        await useStore.getState().enableSync(join);
+        toast(`同期に参加しました（部屋 ${join.room.slice(0, 6)}…）`);
+      } else {
+        useStore.getState().initSync();
+      }
       // URLハッシュ #k=APIキー&p=プロバイダ&m=モデル でキーを受け取る（設定リンク機能）
       if (location.hash.startsWith('#k=')) {
         try {
@@ -105,7 +116,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="px-5 pb-5 text-[10px] text-mute/70">BALBLANC tournament v2</div>
+        <div className="flex items-center justify-between gap-2 px-5 pb-5 text-[10px] text-mute/70">
+          BALBLANC tournament v2
+          <SyncBadge />
+        </div>
       </aside>
 
       <div className="md:pl-60">
@@ -114,6 +128,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2.5 px-4 py-3">
             <span className="h-6 w-6 flex-none"><BallLogo /></span>
             <h1 className="truncate font-display text-base font-extrabold">{appTitle}</h1>
+            <SyncBadge className="ml-auto flex-none" />
           </div>
         </header>
 
