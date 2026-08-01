@@ -18,6 +18,9 @@ export interface SyncConfig { dbUrl: string; room: string }
 const LS_SYNC = 'tennis_sync_v1';
 const FLUSH_DELAY = 250;
 const RETRY_DELAY = 4000;
+// Firebaseは30〜45秒ごとに keep-alive を流す。これが途切れたらストリームが死んだとみなす
+const STALE_MS = 120000;
+const WATCH_INTERVAL = 20000;
 
 export function loadSyncConfig(): SyncConfig | null {
   try {
@@ -70,6 +73,9 @@ let localRev = 0;
 let etagSupported = true; // CORSでETagが読めない環境では後勝ちにフォールバック
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let watchTimer: ReturnType<typeof setInterval> | null = null;
+let lastEventAt = 0; // ストリームから最後に何か届いた時刻
+let wakeBound = false;
 const deviceId = Math.random().toString(36).slice(2, 10);
 
 function setStatus(s: SyncStatus, msg?: string) {
@@ -176,12 +182,49 @@ async function refresh() {
 function connect() {
   if (!cfg) return;
   setStatus('connecting');
+  if (es) es.close();
   es = new EventSource(roomUrl(cfg));
+  lastEventAt = Date.now();
+  const stamp = () => { lastEventAt = Date.now(); };
   es.addEventListener('put', onEvent as EventListener);
   es.addEventListener('patch', onEvent as EventListener);
-  es.onopen = () => setStatus('online');
+  es.addEventListener('keep-alive', stamp);
+  // 繋ぎ直した直後は取りこぼしがあり得るので、必ず最新を取り直す
+  es.onopen = () => { stamp(); setStatus('online'); void refresh(); };
   // EventSource は自動で再接続するので、ここでは表示を切り替えるだけ
   es.onerror = () => setStatus('offline', '接続が切れました。再接続を試みています');
+}
+
+/*
+ * スマホの画面が消えている間などに、エラーを出さないままストリームだけ死ぬことがある。
+ * この状態はバッジが「同期中」のまま更新が止まるので運営が気づけない。
+ * 生存を自前で見張り、死んでいたら繋ぎ直す。
+ */
+function streamDead(): boolean {
+  return !es || es.readyState === 2 || Date.now() - lastEventAt > STALE_MS;
+}
+
+function watchdog() {
+  if (!cfg) return;
+  if (streamDead()) connect();
+}
+
+// 端末が起きた/電波が戻った時は、待たずにその場で追いつく
+function wake() {
+  if (!cfg) return;
+  if (streamDead()) connect();
+  else void refresh();
+  void flush();
+}
+
+function bindWake() {
+  if (wakeBound || typeof window === 'undefined') return;
+  wakeBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') wake();
+  });
+  window.addEventListener('online', wake);
+  window.addEventListener('pageshow', wake);
 }
 
 /* ---------------- 公開API ---------------- */
@@ -204,6 +247,8 @@ export async function startSync(c: SyncConfig, h: Hooks): Promise<void> {
       if (await putDoc(body, etag)) localRev = 1;
     }
     connect();
+    bindWake();
+    watchTimer = setInterval(watchdog, WATCH_INTERVAL);
   } catch (e) {
     setStatus('error', e instanceof Error ? e.message : String(e));
   }
@@ -213,6 +258,7 @@ export function stopSync(): void {
   if (es) { es.close(); es = null; }
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+  if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
   cfg = null;
   hooks = null;
   pending = [];
