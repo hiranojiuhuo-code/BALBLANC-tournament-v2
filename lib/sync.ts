@@ -55,7 +55,14 @@ function roomUrl(c: SyncConfig): string {
   return `${c.dbUrl}/rooms/${encodeURIComponent(c.room)}.json`;
 }
 
-interface RoomDoc { rev: number; updatedAt: number; by: string; payload: SavePayload }
+/*
+ * epoch は「この部屋の中身が作り直された」ことを見分けるための印。
+ * rev は作り直しで1に戻るため、rev だけで比べると他の端末が
+ * 「自分の書き込みのこだま」と誤判定して更新を無視し続けてしまう。
+ */
+interface RoomDoc { rev: number; epoch?: string; updatedAt: number; by: string; payload: SavePayload }
+
+const newEpoch = () => Math.random().toString(36).slice(2, 10);
 
 interface Hooks {
   getLocal: () => Data;
@@ -70,6 +77,7 @@ let es: EventSource | null = null;
 let pending: ((d: Data) => void)[] = [];
 let flushing = false;
 let localRev = 0;
+let localEpoch: string | undefined;
 let etagSupported = true; // CORSでETagが読めない環境では後勝ちにフォールバック
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -118,12 +126,14 @@ async function flush(): Promise<void> {
       fns.forEach((f) => f(base));
       const body: RoomDoc = {
         rev: (doc?.rev ?? 0) + 1,
+        epoch: doc?.epoch ?? newEpoch(), // 部屋が空なら作り直しとして新しい印を振る
         updatedAt: Date.now(),
         by: deviceId,
         payload: snapshot(base),
       };
       if (await putDoc(body, etag)) {
         localRev = body.rev;
+        localEpoch = body.epoch;
         hooks.adopt(body.payload);
         setStatus('online');
         flushing = false;
@@ -160,8 +170,12 @@ function onEvent(ev: MessageEvent) {
   if (pending.length > 0 || flushing) return;
   if (msg.path === '/') {
     const doc = msg.data as RoomDoc;
-    if (!doc.payload || doc.rev <= localRev) return; // 自分の書き込みのエコーは無視
+    if (!doc.payload) return;
+    // 部屋が作り直されていれば rev が戻っていても必ず採用する
+    const recreated = doc.epoch !== localEpoch;
+    if (!recreated && doc.rev <= localRev) return; // 自分の書き込みのエコーは無視
     localRev = doc.rev;
+    localEpoch = doc.epoch;
     hooks.adopt(doc.payload);
   } else {
     void refresh();
@@ -172,10 +186,11 @@ async function refresh() {
   if (!cfg || !hooks) return;
   try {
     const { doc } = await getDoc();
-    if (doc?.payload && doc.rev > localRev && pending.length === 0 && !flushing) {
-      localRev = doc.rev;
-      hooks.adopt(doc.payload);
-    }
+    if (!doc?.payload || pending.length > 0 || flushing) return;
+    if (doc.epoch === localEpoch && doc.rev <= localRev) return;
+    localRev = doc.rev;
+    localEpoch = doc.epoch;
+    hooks.adopt(doc.payload);
   } catch { /* 次のイベントで拾う */ }
 }
 
@@ -241,10 +256,12 @@ export async function startSync(c: SyncConfig, h: Hooks): Promise<void> {
     const { etag, doc } = await getDoc();
     if (doc?.payload) {
       localRev = doc.rev ?? 0;
+      localEpoch = doc.epoch;
       h.adopt(doc.payload);
     } else {
-      const body: RoomDoc = { rev: 1, updatedAt: Date.now(), by: deviceId, payload: snapshot(h.getLocal()) };
-      if (await putDoc(body, etag)) localRev = 1;
+      const epoch = newEpoch();
+      const body: RoomDoc = { rev: 1, epoch, updatedAt: Date.now(), by: deviceId, payload: snapshot(h.getLocal()) };
+      if (await putDoc(body, etag)) { localRev = 1; localEpoch = epoch; }
     }
     connect();
     bindWake();
@@ -264,6 +281,7 @@ export function stopSync(): void {
   pending = [];
   flushing = false;
   localRev = 0;
+  localEpoch = undefined;
 }
 
 export function isSyncActive(): boolean {
