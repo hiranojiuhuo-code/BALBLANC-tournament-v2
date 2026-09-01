@@ -119,6 +119,10 @@ export function SyncCard() {
               <input type="text" className="input font-num" value={room} onChange={(e) => setRoom(e.target.value.trim())} />
               <Button variant="ghost" onClick={() => setRoom(newRoomCode())}>作り直す</Button>
             </div>
+            <p className="mb-0 mt-1.5 text-[11px] leading-relaxed text-mute">
+              最初の1台はこのままで構いません。すでに動いている端末に加わるときは、
+              その端末の設定に出ている部屋コードとデータベースURLを同じものにしてください。
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" disabled={busy} onClick={start}>

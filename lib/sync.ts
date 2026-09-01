@@ -298,17 +298,34 @@ export function pendingCount(): number {
   return pending.length;
 }
 
-// 他の端末に共有する参加用リンク
+/*
+ * 他の端末に共有する参加用リンク。
+ * 区切りに「|」を使うと、LINEなどのメッセージアプリが自動リンクをそこで打ち切り、
+ * 部屋コードの部分が欠けたリンクが相手に届くことがある。URLとして安全な文字だけで組む。
+ */
 export function joinLink(c: SyncConfig): string {
   const base = location.origin + location.pathname;
-  return `${base}#s=${encodeURIComponent(c.dbUrl)}|${encodeURIComponent(c.room)}`;
+  return `${base}#${new URLSearchParams({ s: c.dbUrl, room: c.room }).toString()}`;
 }
 
 export function parseJoinHash(hash: string): SyncConfig | null {
-  if (!hash.startsWith('#s=')) return null;
-  const [u, r] = hash.slice(3).split('|');
-  if (!u || !r) return null;
-  const dbUrl = normalizeDbUrl(decodeURIComponent(u));
-  const room = decodeURIComponent(r);
-  return dbUrl && room ? { dbUrl, room } : null;
+  const body = hash.replace(/^#/, '');
+  if (!body) return null;
+
+  const q = new URLSearchParams(body);
+  const s = q.get('s'), room = q.get('room');
+  if (s && room) {
+    const dbUrl = normalizeDbUrl(s);
+    return dbUrl ? { dbUrl, room } : null;
+  }
+
+  // 旧形式 #s=<URL>|<部屋コード> のリンクも引き続き開けるようにしておく
+  if (hash.startsWith('#s=')) {
+    const [u, r] = hash.slice(3).split('|');
+    if (!u || !r) return null;
+    const dbUrl = normalizeDbUrl(decodeURIComponent(u));
+    const legacyRoom = decodeURIComponent(r);
+    return dbUrl && legacyRoom ? { dbUrl, room: legacyRoom } : null;
+  }
+  return null;
 }
