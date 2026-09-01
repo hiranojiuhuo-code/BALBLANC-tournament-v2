@@ -66,6 +66,13 @@ export function SyncCard() {
             {status === 'connecting' && '接続しています…'}
             {status === 'offline' && 'いま接続できていません。操作はこの端末に残り、つながり次第まとめて送られます。'}
           </Banner>
+          {/* 参加リンク経由だと自分でURLを入れないため、どこに繋がっているかを必ず見せる */}
+          <div className="mb-3">
+            <label className="mb-1 block text-xs font-bold text-mute">接続先のデータベース</label>
+            <div className="select-all break-all rounded-xl border border-line bg-panel2 px-3 py-2 text-[11px] font-bold leading-snug text-mute">
+              {url || '(不明)'}
+            </div>
+          </div>
           <div className="mb-3">
             <label className="mb-1 block text-xs font-bold text-mute">部屋コード</label>
             <div className="font-num select-all break-all rounded-xl border border-line bg-panel2 px-3 py-2 text-sm font-extrabold">
