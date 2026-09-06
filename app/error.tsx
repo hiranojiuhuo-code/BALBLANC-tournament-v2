@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 
 /*
  * 想定外の不具合で画面が真っ白になるのを防ぐ。
@@ -8,6 +8,17 @@ import React from 'react';
  * 「データは消えていない」ことと復帰の手段だけを伝える。
  */
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // 配信直後の古いキャッシュを掴んだ場合は、読み直せば直るので自動で試す
+  useEffect(() => {
+    const msg = `${error?.name || ''} ${error?.message || ''}`;
+    if (!/ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script/i.test(msg)) return;
+    try {
+      if (sessionStorage.getItem('__reloadedForStale')) return;
+      sessionStorage.setItem('__reloadedForStale', '1');
+      location.reload();
+    } catch { /* 手動の再読み込みに任せる */ }
+  }, [error]);
+
   return (
     <div className="mx-auto max-w-md p-6 text-center">
       <h2 className="font-display mb-2 text-lg font-extrabold">画面の表示でエラーが起きました</h2>
