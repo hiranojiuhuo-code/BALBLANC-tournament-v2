@@ -35,7 +35,7 @@ export function playerPaces(d: Data, now: number): Map<string, PlayerPace> {
   };
   d.players.forEach((p) => get(p.id));
   d.matches.forEach((m) => {
-    const ids = m.sideA.concat(m.sideB);
+    const ids = (m.sideA || []).concat(m.sideB || []);
     ids.forEach((id) => {
       const p = get(id);
       if (m.status === 'done') {
@@ -65,7 +65,7 @@ export interface MatchPace {
 }
 
 export function matchPace(d: Data, m: Match, paces: Map<string, PlayerPace>): MatchPace {
-  const ids = m.sideA.concat(m.sideB);
+  const ids = (m.sideA || []).concat(m.sideB || []);
   const nameOf = (id: string) => (pById(d, id) || { name: '?' }).name;
   let waitMin: number | null = null, waitName = '';
   let tightMin: number | null = null, tightName = '';

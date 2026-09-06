@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot, ThemeId } from './types';
-import { defaultData, muId, muById, sampleData, syncMatchups, uid } from './logic';
+import { defaultData, muId, muById, normalizePayload, sampleData, syncMatchups, uid } from './logic';
 import { DEFAULT_THEME } from './themes';
 import {
   loadSyncConfig, pushMutation, saveSyncConfig, startSync, stopSync,
@@ -199,7 +199,7 @@ export const useStore = create<StoreState>()(
         await startSync(c, {
           getLocal: () => get().data,
           adopt: (p) =>
-            set((s) => ({ data: { ...defaultData(), ...structuredClone(p), ai: s.data.ai } })),
+            set((s) => ({ data: { ...defaultData(), ...normalizePayload(p), ai: s.data.ai } })),
           onStatus: (st, msg) => set({ syncStatus: st, syncMsg: msg || '' }),
         });
       },
@@ -220,6 +220,17 @@ export const useStore = create<StoreState>()(
       name: LS_KEY,
       storage: createJSONStorage(() => migratingStorage),
       partialize: (s) => ({ data: s.data, theme: s.theme }),
+      // 同期を経由して配列が壊れた状態で保存されている場合があるので、読み込み時に必ず直す
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as { data?: Partial<Data>; theme?: ThemeId };
+        if (!p.data) return { ...current, ...(p.theme ? { theme: p.theme } : {}) };
+        const base = defaultData();
+        return {
+          ...current,
+          ...(p.theme ? { theme: p.theme } : {}),
+          data: { ...base, ...normalizePayload(p.data), ai: { ...base.ai, ...(p.data.ai || {}) } },
+        };
+      },
       skipHydration: true, // SSG プリレンダとの hydration mismatch 回避。AppShell で手動 rehydrate
     },
   ),

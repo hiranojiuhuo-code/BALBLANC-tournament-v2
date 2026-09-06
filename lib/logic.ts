@@ -85,8 +85,8 @@ export function teamColor(d: Data, id: string): string {
   return `var(--team-${(i < 0 ? 0 : i) % TEAM_COLOR_COUNT})`;
 }
 
-export function names(d: Data, ids: string[]): string {
-  return ids.map((id) => (pById(d, id) || { name: '?' }).name).join('・');
+export function names(d: Data, ids: string[] | undefined): string {
+  return (ids || []).map((id) => (pById(d, id) || { name: '?' }).name).join('・');
 }
 
 export function muLabel(d: Data, mu: Matchup | undefined): string {
@@ -105,12 +105,13 @@ export function matchesOf(d: Data, id: string): Match[] {
 /* ---------------- 被り検出（核心ロジック） ---------------- */
 export function busyPlayerIds(d: Data): Set<string> {
   const s = new Set<string>();
-  d.matches.filter((m) => m.status === 'live').forEach((m) => m.sideA.concat(m.sideB).forEach((id) => s.add(id)));
+  d.matches.filter((m) => m.status === 'live')
+    .forEach((m) => (m.sideA || []).concat(m.sideB || []).forEach((id) => s.add(id)));
   return s;
 }
 
 export function conflictNames(d: Data, m: Match, busy: Set<string>): string[] {
-  return m.sideA.concat(m.sideB).filter((id) => busy.has(id))
+  return (m.sideA || []).concat(m.sideB || []).filter((id) => busy.has(id))
     .map((id) => (pById(d, id) || { name: '' }).name).filter(Boolean);
 }
 
@@ -180,6 +181,39 @@ export function playerRecord(d: Data, pid: string, catFilter: Cat | 'all'): Play
     if (my > op) w++; else if (op > my) l++;
   });
   return { w, l, gf, ga, played: w + l };
+}
+
+/* ---------------- 受け取ったデータの正規化 ---------------- */
+/*
+ * Firebase Realtime Database は空配列とnullを「存在しない」ものとして落とし、
+ * 歯抜けの配列を数値キーのオブジェクトに変えて返す。そのまま使うと
+ * m.sideA が undefined になって画面全体が落ちるので、必ず配列に戻す。
+ */
+function toArray<T>(v: unknown): T[] {
+  if (Array.isArray(v)) return v.filter((x) => x != null) as T[];
+  if (v && typeof v === 'object') {
+    return Object.keys(v as object)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((k) => (v as Record<string, T>)[k])
+      .filter((x) => x != null);
+  }
+  return [];
+}
+
+export function normalizePayload(p: Partial<SavePayload> | null | undefined): SavePayload {
+  const base = defaultData();
+  return {
+    teams: toArray<Team>(p?.teams),
+    players: toArray<Player>(p?.players),
+    matchups: toArray<Matchup>(p?.matchups),
+    matches: toArray<Match>(p?.matches).map((m) => ({
+      ...m,
+      sideA: toArray<string>(m?.sideA),
+      sideB: toArray<string>(m?.sideB),
+    })),
+    courtCount: Number(p?.courtCount) > 0 ? Number(p?.courtCount) : base.courtCount,
+    title: typeof p?.title === 'string' ? p.title : base.title,
+  };
 }
 
 /* ---------------- スナップショット ---------------- */
