@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
-  busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
+  CATS, busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
   muById, muLabel, names, teamColor, tName,
 } from '@/lib/logic';
 import { matchPace, playerPaces, progressOf, recommendOrder } from '@/lib/pacing';
 import { useNow } from '@/lib/useNow';
-import type { Match } from '@/lib/types';
+import type { Cat, Match } from '@/lib/types';
 import { Badge } from '@/components/Badge';
 import { Banner, Pill, SectionTitle } from '@/components/Card';
 import { ProgressPanel } from '@/components/ProgressPanel';
@@ -29,6 +29,7 @@ export default function BoardPage() {
   const [assignId, setAssignId] = useState<string | null>(null);
   const [finishId, setFinishId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<'rec' | 'table'>('rec');
+  const [catRaw, setCat] = useState<Cat | 'all'>('all');
   const now = useNow();
 
   if (data.matchups.length === 0) {
@@ -51,6 +52,15 @@ export default function BoardPage() {
   const busy = busyPlayerIds(data);
   const fc = freeCourts(data);
 
+  const scope = curMu === '__all' ? data.matches : matchesOf(data, curMu);
+  // 実際に存在する種目だけタブに出す（ミックスが無い大会でタブを出しても邪魔なので）
+  const cats = (['S', 'D', 'M'] as Cat[]).filter((c) => scope.some((m) => m.cat === c));
+  const cat = catRaw !== 'all' && !cats.includes(catRaw) ? 'all' : catRaw;
+  const catTabs: { key: Cat | 'all'; label: string }[] = [
+    { key: 'all', label: 'すべて' },
+    ...cats.map((c) => ({ key: c as Cat | 'all', label: CATS[c] })),
+  ];
+
   let pending = data.matches.filter((m) => m.status === 'pending');
   if (curMu !== '__all') pending = pending.filter((m) => m.matchupId === curMu);
   pending = [...pending].sort(
@@ -58,9 +68,12 @@ export default function BoardPage() {
       data.matchups.findIndex((x) => x.id === a.matchupId) - data.matchups.findIndex((x) => x.id === b.matchupId) ||
       a.order - b.order,
   );
-  const readyRaw = pending.filter((m) => conflictNames(data, m, busy).length === 0);
-  const blocked = pending.filter((m) => conflictNames(data, m, busy).length > 0);
-  const scope = curMu === '__all' ? data.matches : matchesOf(data, curMu);
+  // タブの件数は種目で絞る前に数える（各タブに何試合あるか見えるように）
+  const readyAllCats = pending.filter((m) => conflictNames(data, m, busy).length === 0);
+  const blockedAllCats = pending.filter((m) => conflictNames(data, m, busy).length > 0);
+  const byCat = (arr: Match[]) => (cat === 'all' ? arr : arr.filter((m) => m.cat === cat));
+  const readyRaw = byCat(readyAllCats);
+  const blocked = byCat(blockedAllCats);
   const selMu = curMu !== '__all' ? muById(data, curMu) : undefined;
   const selScore = selMu ? matchupScore(data, selMu.id) : null;
 
@@ -133,6 +146,32 @@ export default function BoardPage() {
           );
         })}
       </div>
+
+      {/* 種目タブ。下の2つの一覧だけを絞る（コートと終了見込みは全体のまま） */}
+      {cats.length > 1 && (
+        <div
+          className="mb-3 grid gap-1 rounded-xl border border-line bg-panel2 p-1"
+          style={{ gridTemplateColumns: `repeat(${catTabs.length}, minmax(0,1fr))` }}
+        >
+          {catTabs.map((t) => {
+            const n = t.key === 'all' ? readyAllCats.length : readyAllCats.filter((m) => m.cat === t.key).length;
+            const on = cat === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setCat(t.key)}
+                className={`flex min-h-10 items-center justify-center gap-1 rounded-lg text-[11.5px] font-extrabold transition active:scale-95 ${
+                  on ? 'glow-neon bg-neon text-[var(--on-accent)]' : 'text-mute hover:text-ink'
+                }`}
+              >
+                {t.label}
+                <span className="font-num text-[10px] opacity-75">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* いま組める試合（被りゼロ） */}
       <section className="mb-6">
