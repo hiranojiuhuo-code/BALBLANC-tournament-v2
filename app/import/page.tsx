@@ -94,6 +94,23 @@ export default function ImportPage() {
     }
   }
 
+  // 原因ごとに直し方が違うので、生のエラー文だけでなく次の一手を出す
+  function explainVisionError(e: unknown): string {
+    const raw = (e as Error)?.message || String(e);
+    const code = /\b(400|401|403|404|429|5\d\d)\b/.exec(raw)?.[1];
+    if (raw.includes('APIキーが設定されていません')) {
+      return 'APIキーが設定されていません。「設定」画面で登録してください。';
+    }
+    if (code === '401' || code === '403') {
+      return 'APIキーが無効です。期限切れか、キーが正しくコピーされていない可能性があります。'
+        + 'Google AI Studio でキーを作り直し、「設定」画面に貼り直してください。';
+    }
+    if (code === '404') return `モデル名が違うようです（いまの設定: ${data.ai.model}）。「設定」画面で gemini-2.5-flash などに直してください。`;
+    if (code === '429') return '無料枠の上限に達しました。少し時間をおくか、「設定」でモデルを gemini-2.5-flash に変えて試してください。';
+    if (code && code.startsWith('5')) return 'AI側のサーバーが混み合っています。少し待ってからもう一度お試しください。';
+    return '読み取りに失敗しました：' + raw + '　通信状況とAPIキー・モデル名を確認してください。';
+  }
+
   async function run() {
     setRunning(true);
     setErr('');
@@ -102,7 +119,7 @@ export default function ImportPage() {
       setBuilt(buildFromExtraction(ex));
       setFromArchive(false);
     } catch (e) {
-      setErr('読み取りに失敗しました：' + ((e as Error)?.message || String(e)) + '　APIキー・モデル名・通信を確認してください。');
+      setErr(explainVisionError(e));
     }
     setRunning(false);
   }
@@ -217,7 +234,14 @@ export default function ImportPage() {
           {running && (
             <EmptyNote>AIが読み取り中…（{imgs.length > 1 ? `${imgs.length}枚・` : ''}10〜30秒ほど）</EmptyNote>
           )}
-          {err && <Banner variant="danger">{err}</Banner>}
+          {err && (
+            <Banner variant="danger">
+              {err}
+              {/APIキー|モデル名/.test(err) && (
+                <div className="mt-2"><Button size="sm" variant="primary" href="/settings">設定を開く</Button></div>
+              )}
+            </Banner>
+          )}
         </Card>
       )}
 

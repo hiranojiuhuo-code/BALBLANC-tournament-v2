@@ -83,11 +83,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         const k = q.get('k');
         if (k) {
           useStore.getState().mutate((d) => {
-            d.ai.key = k;
+            // 共有リンク経由だと末尾に空白や改行が紛れ込むことがある。残すとGoogleに401で弾かれる
+            d.ai.key = k.trim();
             const p = q.get('p');
             if (p) d.ai.provider = p as Provider;
             const m = q.get('m');
-            if (m) d.ai.model = m;
+            if (m) d.ai.model = m.trim();
           });
           history.replaceState(null, '', location.pathname + location.search); // キーをURLから消す
           setTimeout(() => toast('APIキーを設定しました'), 400);

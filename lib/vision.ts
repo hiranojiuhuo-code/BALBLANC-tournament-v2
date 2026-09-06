@@ -63,7 +63,11 @@ export function parseJSONLoose(text: string): unknown {
 }
 
 // プロバイダ別 Vision API 呼び出し（参照実装から移植）
-export async function callVision(ai: AiConfig, imgs: ScaledImage[]): Promise<unknown> {
+export async function callVision(rawAi: AiConfig, imgs: ScaledImage[]): Promise<unknown> {
+  // 貼り付けやリンク経由でキーやモデル名の前後に空白・改行が入ることがある。
+  // そのまま送るとGoogleは「認証情報が無い」とみなして401を返すので、送信直前に落とす。
+  const ai: AiConfig = { ...rawAi, key: (rawAi.key || '').trim(), model: (rawAi.model || '').trim() };
+  if (!ai.key) throw new Error('APIキーが設定されていません');
   if (ai.provider === 'gemini') {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${ai.model}:generateContent?key=${encodeURIComponent(ai.key)}`;
     const parts = [
