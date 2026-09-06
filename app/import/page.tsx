@@ -56,6 +56,7 @@ function BuiltTables({ built }: { built: BuiltMatchup[] }) {
 
 export default function ImportPage() {
   const data = useStore((s) => s.data);
+  const mutate = useStore((s) => s.mutate);
   const applyExtraction = useStore((s) => s.applyExtraction);
   const setBoardMu = useStore((s) => s.setBoardMu);
   const router = useRouter();
@@ -63,6 +64,7 @@ export default function ImportPage() {
   const [imgs, setImgs] = useState<ScaledImage[]>([]);
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState('');
+  const [fixModel, setFixModel] = useState<string | null>(null);
   const [built, setBuilt] = useState<BuiltMatchup[] | null>(null);
   const [fromArchive, setFromArchive] = useState(false); // 再取り込み時は重複アーカイブを防止
   const [archives, setArchives] = useState<ArchiveEntry[] | null>(null);
@@ -105,23 +107,45 @@ export default function ImportPage() {
       return 'APIキーが無効です。期限切れか、キーが正しくコピーされていない可能性があります。'
         + 'Google AI Studio でキーを作り直し、「設定」画面に貼り直してください。';
     }
-    if (code === '404') return `モデル名が違うようです（いまの設定: ${data.ai.model}）。「設定」画面で gemini-2.5-flash などに直してください。`;
-    if (code === '429') return '無料枠の上限に達しました。少し時間をおくか、「設定」でモデルを gemini-2.5-flash に変えて試してください。';
+    if (code === '404') {
+      return `このモデルは使えなくなっています（いまの設定: ${data.ai.model}）。`
+        + (suggestedModelFrom(raw) ? '下のボタンで後継モデルに切り替えられます。' : '「設定」画面でモデル名を直してください。');
+    }
+    if (code === '429') return '無料枠の上限に達しました。1分ほど待ってからもう一度お試しください。';
     if (code && code.startsWith('5')) return 'AI側のサーバーが混み合っています。少し待ってからもう一度お試しください。';
     return '読み取りに失敗しました：' + raw + '　通信状況とAPIキー・モデル名を確認してください。';
   }
 
-  async function run() {
+  // Googleの404は「代わりにこれを使え」と後継モデル名を返してくれる。拾って1タップで直せるようにする
+  function suggestedModelFrom(raw: string): string | null {
+    const m = /use\s+models\/([A-Za-z0-9.\-]+)/.exec(raw);
+    const name = m?.[1];
+    return name && name !== data.ai.model ? name : null;
+  }
+
+  async function run(modelOverride?: string) {
     setRunning(true);
     setErr('');
+    setFixModel(null);
     try {
-      const ex = await callVision(data.ai, imgs);
+      const cfg = modelOverride ? { ...data.ai, model: modelOverride } : data.ai;
+      const ex = await callVision(cfg, imgs);
       setBuilt(buildFromExtraction(ex));
       setFromArchive(false);
     } catch (e) {
+      const raw = (e as Error)?.message || String(e);
+      setFixModel(suggestedModelFrom(raw));
       setErr(explainVisionError(e));
     }
     setRunning(false);
+  }
+
+  // 後継モデルを設定に保存してから、そのまま解析をやり直す
+  function applyModelFix() {
+    const m = fixModel;
+    if (!m) return;
+    mutate((d) => { d.ai.model = m; });
+    void run(m);
   }
 
   function apply() {
@@ -208,7 +232,7 @@ export default function ImportPage() {
             <Button
               variant="done"
               disabled={imgs.length === 0 || running}
-              onClick={run}
+              onClick={() => run()}
             >
               {running ? '解析中…' : imgs.length > 1 ? `解析する（${imgs.length}枚）` : '解析する'}
             </Button>
@@ -237,9 +261,15 @@ export default function ImportPage() {
           {err && (
             <Banner variant="danger">
               {err}
-              {/APIキー|モデル名/.test(err) && (
+              {fixModel ? (
+                <div className="mt-2">
+                  <Button size="sm" variant="primary" disabled={running} onClick={applyModelFix}>
+                    モデルを {fixModel} に変更して再試行
+                  </Button>
+                </div>
+              ) : /APIキー|モデル名/.test(err) ? (
                 <div className="mt-2"><Button size="sm" variant="primary" href="/settings">設定を開く</Button></div>
-              )}
+              ) : null}
             </Banner>
           )}
         </Card>

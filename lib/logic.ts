@@ -19,7 +19,7 @@ export function defaultData(): Data {
   // 初期は空。チーム・対抗戦・試合はすべて写真取り込み（または手動）から作る。
   return {
     teams: [], players: [], matchups: [], matches: [], courtCount: 4, title: '大会',
-    ai: { provider: 'gemini', key: '', model: 'gemini-2.5-flash' },
+    ai: { provider: 'gemini', key: '', model: 'gemini-3.6-flash' },
   };
 }
 
@@ -70,7 +70,7 @@ export function sampleData(): Data {
 
   return {
     teams, players, matchups, matches, courtCount: 4, title: 'リーグ戦',
-    ai: { provider: 'gemini', key: '', model: 'gemini-2.5-flash' },
+    ai: { provider: 'gemini', key: '', model: 'gemini-3.6-flash' },
   };
 }
 

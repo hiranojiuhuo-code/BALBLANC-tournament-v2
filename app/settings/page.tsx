@@ -17,7 +17,7 @@ const PROVIDER_HELP: Record<Provider, React.ReactNode> = {
   gemini: (
     <>
       無料枠あり。<a className="font-bold text-cyan underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">Google AI Studio</a> でキー取得。
-      429エラー時はモデル名を gemini-2.5-flash 等に変更。
+      429エラー時は少し待つか、モデル名を gemini-3.6-flash 等に変更。
     </>
   ),
   claude: (
