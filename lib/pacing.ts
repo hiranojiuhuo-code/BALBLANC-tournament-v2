@@ -18,6 +18,7 @@ export interface PlayerPace {
   playedCount: number; // 完了した試合数
   remaining: number; // まだ残っている試合数
   live: boolean; // いま試合中
+  liveCourt: number | null; // 試合中のコート番号（0始まり）
   lastEndedAt: number | null; // 直近に終えた試合の終了時刻
   restMin: number | null; // 休憩時間（分）。null = まだ一度も出ていない or 記録なし
 }
@@ -28,7 +29,7 @@ export function playerPaces(d: Data, now: number): Map<string, PlayerPace> {
   const get = (id: string) => {
     let p = map.get(id);
     if (!p) {
-      p = { playedCount: 0, remaining: 0, live: false, lastEndedAt: null, restMin: null };
+      p = { playedCount: 0, remaining: 0, live: false, liveCourt: null, lastEndedAt: null, restMin: null };
       map.set(id, p);
     }
     return p;
@@ -44,6 +45,7 @@ export function playerPaces(d: Data, now: number): Map<string, PlayerPace> {
         if (e != null && (p.lastEndedAt == null || e > p.lastEndedAt)) p.lastEndedAt = e;
       } else if (m.status === 'live') {
         p.live = true;
+        p.liveCourt = m.court ?? null;
       } else {
         p.remaining++;
       }
