@@ -45,6 +45,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [joinAsk, setJoinAsk] = useState<SyncConfig | null>(null);
   const hydrated = useStore((s) => s.hydrated);
   const theme = useStore((s) => s.theme);
+  // 残り試合数は進行中いつでも気になるので、どの画面でもヘッダーに出す
+  const matches = useStore((s) => s.data.matches);
+  const totalMatches = matches.length;
+  const remainingMatches = matches.filter((m) => m.status !== 'done').length;
   const pathname = normPath(usePathname());
 
   useEffect(() => {
@@ -132,7 +136,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="h-7 w-7 flex-none"><BallLogo /></span>
           <div className="min-w-0">
             <div className="truncate font-display text-[15px] font-extrabold leading-tight">{appTitle}</div>
-            <div className="text-[10px] font-bold tracking-widest text-mute">TAIKOUSEN BOARD</div>
+            {totalMatches > 0 ? (
+              <div className="font-num text-[10px] font-bold text-mute">
+                残り <b className="text-ink">{remainingMatches}</b> / {totalMatches} 試合
+              </div>
+            ) : (
+              <div className="text-[10px] font-bold tracking-widest text-mute">TAIKOUSEN BOARD</div>
+            )}
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-6">
@@ -164,8 +174,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-30 border-b border-line bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
           <div className="flex items-center gap-2.5 px-4 py-3">
             <span className="h-6 w-6 flex-none"><BallLogo /></span>
-            <h1 className="truncate font-display text-base font-extrabold">{appTitle}</h1>
-            <SyncBadge className="ml-auto flex-none" />
+            <h1 className="min-w-0 truncate font-display text-base font-extrabold">{appTitle}</h1>
+            <div className="ml-auto flex flex-none items-center gap-2">
+              {totalMatches > 0 && (
+                <span className="font-num whitespace-nowrap rounded-md border border-line bg-panel2 px-1.5 py-0.5 text-[10px] font-bold text-mute">
+                  残り <b className="text-ink">{remainingMatches}</b>
+                </span>
+              )}
+              <SyncBadge />
+            </div>
           </div>
         </header>
 
