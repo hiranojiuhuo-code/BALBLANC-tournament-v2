@@ -2,10 +2,34 @@
 
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { matchLabel, muById, muLabel, names, teamColor } from '@/lib/logic';
-import type { Match } from '@/lib/types';
-import type { MatchPace } from '@/lib/pacing';
+import { matchLabel, muById, muLabel, names, pById, teamColor } from '@/lib/logic';
+import type { Data, Match } from '@/lib/types';
+import type { MatchPace, PlayerPace } from '@/lib/pacing';
 import { Badge, CatTag } from './Badge';
+
+/*
+ * 選手名の横に残り試合数を括弧で出す。どの試合を先に入れるか決めるとき、
+ * 「この人はあと何試合あるのか」がその場で分かるようにするため。
+ */
+function Names({ data, ids, paces }: { data: Data; ids: string[] | undefined; paces?: Map<string, PlayerPace> }) {
+  if (!paces) return <>{names(data, ids)}</>;
+  const arr = ids || [];
+  if (arr.length === 0) return <>―</>;
+  return (
+    <>
+      {arr.map((id, i) => {
+        const rem = paces.get(id)?.remaining;
+        return (
+          <span key={id}>
+            {i > 0 && '・'}
+            {(pById(data, id) || { name: '?' }).name}
+            {rem != null && <span className="font-num text-[0.8em] font-bold opacity-55">({rem})</span>}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 // 待ち時間・連戦の一行表示。運営が「次に入れてよいか」を判断する材料
 function PaceLine({ pace, size }: { pace: MatchPace; size: string }) {
@@ -31,7 +55,7 @@ function PaceLine({ pace, size }: { pace: MatchPace; size: string }) {
 
 export function MatchCard({
   match: m, state = 'plain', conflicts = [], onClick, compact = false, className = '',
-  pace, recommended = false,
+  pace, recommended = false, paces,
 }: {
   match: Match;
   state?: 'ready' | 'busy' | 'plain';
@@ -41,6 +65,7 @@ export function MatchCard({
   className?: string;
   pace?: MatchPace; // 待ち時間・連戦の情報（進行ボードの一覧のみ）
   recommended?: boolean; // 次に入れる候補として推奨
+  paces?: Map<string, PlayerPace>; // 渡すと選手名の横に残り試合数を出す
 }) {
   const data = useStore((s) => s.data);
   const mu = muById(data, m.matchupId);
@@ -72,11 +97,11 @@ export function MatchCard({
           {state === 'ready' && !recommended && <Badge variant="ready">組める</Badge>}
           {state === 'busy' && <Badge variant="busy">試合中</Badge>}
         </div>
-        <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: ac }}>{names(data, m.sideA)}</div>
+        <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: ac }}><Names data={data} ids={m.sideA} paces={paces} /></div>
         <div className="my-0.5 flex items-center gap-1.5 text-[9px] font-extrabold tracking-[.2em] text-mute/60">
           <span className="h-px flex-1 bg-line" />VS<span className="h-px flex-1 bg-line" />
         </div>
-        <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: bc }}>{names(data, m.sideB)}</div>
+        <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: bc }}><Names data={data} ids={m.sideB} paces={paces} /></div>
         {conflicts.length > 0 ? (
           <div className="mt-1 text-[10px] font-bold leading-tight text-warn">{conflicts.join('、')} が試合中</div>
         ) : pace ? (
@@ -100,13 +125,13 @@ export function MatchCard({
       </div>
       <CatTag cat={m.cat} label={matchLabel(m)} />
       <div className="mt-1.5 text-[15px] font-extrabold leading-snug" style={{ color: ac }}>
-        {names(data, m.sideA)}
+        <Names data={data} ids={m.sideA} paces={paces} />
       </div>
       <div className="my-0.5 flex items-center gap-2 text-[10px] font-extrabold tracking-[.2em] text-mute/60">
         <span className="h-px flex-1 bg-line" />VS<span className="h-px flex-1 bg-line" />
       </div>
       <div className="text-[15px] font-extrabold leading-snug" style={{ color: bc }}>
-        {names(data, m.sideB)}
+        <Names data={data} ids={m.sideB} paces={paces} />
       </div>
       {conflicts.length > 0 ? (
         <div className="mt-1.5 text-[11px] font-bold text-warn">{conflicts.join('、')} が他コートで試合中</div>

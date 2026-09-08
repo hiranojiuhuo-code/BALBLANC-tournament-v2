@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
-  CATS, busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
+  busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
   muById, muLabel, names, teamColor, tName,
 } from '@/lib/logic';
 import { matchPace, playerPaces, progressOf, recommendOrder } from '@/lib/pacing';
 import { useNow } from '@/lib/useNow';
-import type { Cat, Match } from '@/lib/types';
+import type { Match } from '@/lib/types';
 import { Badge } from '@/components/Badge';
 import { Banner, Pill, SectionTitle } from '@/components/Card';
 import { ProgressPanel } from '@/components/ProgressPanel';
@@ -21,6 +21,19 @@ import { ScoreDialog } from '@/components/ScoreDialog';
 import { toast } from '@/components/Toast';
 import { IconCamera } from '@/components/icons';
 
+/*
+ * 進行ボードの種目タブ。種目(S/D)と男女を掛け合わせた5分類にする。
+ * 混合は cat==='M' だが、性別だけXの変則データも拾えるようにしている。
+ */
+type GroupKey = 'MS' | 'MD' | 'FS' | 'FD' | 'MX';
+const MATCH_GROUPS: { key: GroupKey; label: string; test: (m: Match) => boolean }[] = [
+  { key: 'MS', label: '男子S', test: (m) => m.cat === 'S' && m.gender === 'M' },
+  { key: 'MD', label: '男子D', test: (m) => m.cat === 'D' && m.gender === 'M' },
+  { key: 'FS', label: '女子S', test: (m) => m.cat === 'S' && m.gender === 'F' },
+  { key: 'FD', label: '女子D', test: (m) => m.cat === 'D' && m.gender === 'F' },
+  { key: 'MX', label: 'ミックス', test: (m) => m.cat === 'M' || m.gender === 'X' },
+];
+
 export default function BoardPage() {
   const data = useStore((s) => s.data);
   const loadSample = useStore((s) => s.loadSample);
@@ -29,7 +42,7 @@ export default function BoardPage() {
   const [assignId, setAssignId] = useState<string | null>(null);
   const [finishId, setFinishId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<'rec' | 'table'>('rec');
-  const [catRaw, setCat] = useState<Cat | 'all'>('all');
+  const [catRaw, setCat] = useState<GroupKey | 'all'>('all');
   const [q, setQ] = useState('');
   const now = useNow();
 
@@ -54,13 +67,15 @@ export default function BoardPage() {
   const fc = freeCourts(data);
 
   const scope = curMu === '__all' ? data.matches : matchesOf(data, curMu);
-  // 実際に存在する種目だけタブに出す（ミックスが無い大会でタブを出しても邪魔なので）
-  const cats = (['S', 'D', 'M'] as Cat[]).filter((c) => scope.some((m) => m.cat === c));
-  const cat = catRaw !== 'all' && !cats.includes(catRaw) ? 'all' : catRaw;
-  const catTabs: { key: Cat | 'all'; label: string }[] = [
+  // 実際に存在する種目だけタブに出す（女子が無い大会でタブを出しても邪魔なので）
+  const groups = MATCH_GROUPS.filter((g) => scope.some(g.test));
+  const cat = catRaw !== 'all' && !groups.some((g) => g.key === catRaw) ? 'all' : catRaw;
+  const catTabs: { key: GroupKey | 'all'; label: string }[] = [
     { key: 'all', label: 'すべて' },
-    ...cats.map((c) => ({ key: c as Cat | 'all', label: CATS[c] })),
+    ...groups.map((g) => ({ key: g.key as GroupKey | 'all', label: g.label })),
   ];
+  const inGroup = (m: Match, key: GroupKey | 'all') =>
+    key === 'all' || (MATCH_GROUPS.find((g) => g.key === key)?.test(m) ?? false);
 
   let pending = data.matches.filter((m) => m.status === 'pending');
   if (curMu !== '__all') pending = pending.filter((m) => m.matchupId === curMu);
@@ -81,7 +96,7 @@ export default function BoardPage() {
   // タブの件数は種目で絞る前に数える（各タブに何試合あるか見えるように）
   const readyAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length === 0));
   const blockedAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length > 0));
-  const byCat = (arr: Match[]) => (cat === 'all' ? arr : arr.filter((m) => m.cat === cat));
+  const byCat = (arr: Match[]) => (cat === 'all' ? arr : arr.filter((m) => inGroup(m, cat)));
   const readyRaw = byCat(readyAllCats);
   const blocked = byCat(blockedAllCats);
   const selMu = curMu !== '__all' ? muById(data, curMu) : undefined;
@@ -142,7 +157,7 @@ export default function BoardPage() {
               </div>
               {m ? (
                 <>
-                  <MatchCard match={m} className="relative z-10" />
+                  <MatchCard match={m} className="relative z-10" paces={paces} />
                   <Button variant="done" className="relative z-10 w-full" onClick={() => setFinishId(m.id)}>
                     試合終了・結果入力
                   </Button>
@@ -210,25 +225,26 @@ export default function BoardPage() {
       )}
 
       {/* 種目タブ。下の2つの一覧だけを絞る（コートと終了見込みは全体のまま） */}
-      {cats.length > 1 && (
+      {groups.length > 1 && (
         <div
           className="mb-3 grid gap-1 rounded-xl border border-line bg-panel2 p-1"
           style={{ gridTemplateColumns: `repeat(${catTabs.length}, minmax(0,1fr))` }}
         >
           {catTabs.map((t) => {
-            const n = t.key === 'all' ? readyAllCats.length : readyAllCats.filter((m) => m.cat === t.key).length;
+            const n = readyAllCats.filter((m) => inGroup(m, t.key)).length;
             const on = cat === t.key;
             return (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => setCat(t.key)}
-                className={`flex min-h-10 items-center justify-center gap-1 rounded-lg text-[11.5px] font-extrabold transition active:scale-95 ${
+                className={`flex min-h-11 flex-col items-center justify-center rounded-lg px-0.5 leading-tight transition active:scale-95 ${
                   on ? 'glow-neon bg-neon text-[var(--on-accent)]' : 'text-mute hover:text-ink'
                 }`}
               >
-                {t.label}
-                <span className="font-num text-[10px] opacity-75">{n}</span>
+                {/* 6タブでも1行に収めるため、件数は名前の下に置く */}
+                <span className="text-[10.5px] font-extrabold">{t.label}</span>
+                <span className="font-num text-[11px] font-extrabold opacity-75">{n}</span>
               </button>
             );
           })}
@@ -257,6 +273,7 @@ export default function BoardPage() {
                 state="ready"
                 compact
                 pace={matchPace(data, m, paces)}
+                paces={paces}
                 recommended={i < recCount}
                 onClick={() => setAssignId(m.id)}
               />
@@ -285,6 +302,7 @@ export default function BoardPage() {
                 state="busy"
                 compact
                 conflicts={conflictNames(data, m, busy)}
+                paces={paces}
                 onClick={() => setAssignId(m.id)}
               />
             ))}
