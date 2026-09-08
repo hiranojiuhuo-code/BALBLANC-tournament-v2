@@ -182,6 +182,7 @@ export const useStore = create<StoreState>()(
             m.tbB = null;
             m.startedAt = null;
             m.endedAt = null;
+            m.queuedAt = null;
           });
         });
       },

@@ -36,6 +36,7 @@ const MATCH_GROUPS: { key: GroupKey; label: string; test: (m: Match) => boolean 
 
 export default function BoardPage() {
   const data = useStore((s) => s.data);
+  const mutate = useStore((s) => s.mutate);
   const loadSample = useStore((s) => s.loadSample);
   const boardMuRaw = useStore((s) => s.boardMu);
   const setBoardMu = useStore((s) => s.setBoardMu);
@@ -92,6 +93,13 @@ export default function BoardPage() {
   const hitIds = new Set(hitPlayers.map((p) => p.id));
   const byQuery = (arr: Match[]) =>
     !qn ? arr : arr.filter((m) => (m.sideA || []).concat(m.sideB || []).some((id) => hitIds.has(id)));
+
+  // 「次の試合」待機列。コートが空いたらここから入れる想定なので、下の一覧からは外す
+  const queue = pending
+    .filter((m) => m.queuedAt != null)
+    .sort((a, b) => (a.queuedAt || 0) - (b.queuedAt || 0));
+  const queued = new Set(queue.map((m) => m.id));
+  pending = pending.filter((m) => !queued.has(m.id));
 
   // タブの件数は種目で絞る前に数える（各タブに何試合あるか見えるように）
   const readyAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length === 0));
@@ -171,6 +179,54 @@ export default function BoardPage() {
           );
         })}
       </div>
+
+      {/* 次の試合（待機列）。コートが空いたらここから入れる */}
+      <section className="mb-6">
+        <SectionTitle>
+          <span className="text-cyan">次の試合（{queue.length}）</span>
+          {queue.length > 0 && fc.length > 0 && <Pill>タップしてコートへ</Pill>}
+        </SectionTitle>
+        {queue.length === 0 ? (
+          <EmptyNote>
+            下の一覧から試合をタップし、「次の試合に入れる」で並べておけます
+          </EmptyNote>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+            {queue.map((m, i) => {
+              const conf = conflictNames(data, m, busy);
+              return (
+                <div key={m.id} className="relative">
+                  <span className="absolute -left-1.5 -top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-cyan font-num text-[10px] font-extrabold text-[var(--on-accent)]">
+                    {i + 1}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="待機から外す"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      mutate((d) => {
+                        const t = d.matches.find((x) => x.id === m.id);
+                        if (t) t.queuedAt = null;
+                      });
+                    }}
+                    className="absolute -right-1.5 -top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-line bg-panel text-[11px] font-bold text-mute active:scale-90"
+                  >
+                    ×
+                  </button>
+                  <MatchCard
+                    match={m}
+                    state={conf.length > 0 ? 'busy' : 'ready'}
+                    compact
+                    paces={paces}
+                    conflicts={conf}
+                    onClick={() => setAssignId(m.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* 選手名での絞り込み。「〇〇さんの試合は？」に即答するための入口 */}
       <div className="relative mb-2">
@@ -339,10 +395,22 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
         t.status = 'live';
         t.startedAt = new Date().toISOString();
         t.endedAt = null;
+        t.queuedAt = null; // コートに入ったら待機列から外す
       }
     });
     onClose();
     toast(`コート${court + 1}で開始しました`);
+  };
+
+  // コートが空くまでの「次の試合」に並べておく
+  const toggleQueue = () => {
+    const on = m.queuedAt == null;
+    mutate((d) => {
+      const t = d.matches.find((x) => x.id === matchId);
+      if (t) t.queuedAt = on ? Date.now() : null;
+    });
+    onClose();
+    toast(on ? '次の試合に入れました' : '待機から外しました');
   };
 
   return (
@@ -360,8 +428,13 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
       )}
       {fc.length === 0 ? (
         <>
-          <Banner variant="danger">空いているコートがありません。先にどこかの試合を終了してください。</Banner>
+          <Banner variant="danger">
+            空いているコートがありません。「次の試合」に並べておくと、コートが空いたときにすぐ入れられます。
+          </Banner>
           <ModalActions>
+            <Button variant={m.queuedAt == null ? 'primary' : 'ghost'} className="mr-auto" onClick={toggleQueue}>
+              {m.queuedAt == null ? '次の試合に入れる' : '待機から外す'}
+            </Button>
             <Button variant="ghost" onClick={onClose}>閉じる</Button>
           </ModalActions>
         </>
@@ -381,6 +454,9 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
             ))}
           </div>
           <ModalActions>
+            <Button variant="ghost" className="mr-auto" onClick={toggleQueue}>
+              {m.queuedAt == null ? '次の試合に入れる' : '待機から外す'}
+            </Button>
             <Button variant="ghost" onClick={onClose}>キャンセル</Button>
           </ModalActions>
         </>

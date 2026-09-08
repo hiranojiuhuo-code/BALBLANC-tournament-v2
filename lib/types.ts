@@ -41,6 +41,7 @@ export interface Match {
   tbB?: number | null;
   startedAt?: string | null; // コートに入れた時刻（ISO）。待ち時間・所要時間の算出に使う
   endedAt?: string | null; // 結果を確定した時刻（ISO）
+  queuedAt?: number | null; // 「次の試合」待機列に入れた時刻。並び順にも使う
 }
 
 export interface AiConfig {

@@ -323,6 +323,7 @@ function EditMatchModal({ matchId, onClose }: { matchId: string | null; onClose:
                       t.tbB = null;
                       t.startedAt = null;
                       t.endedAt = null;
+                      t.queuedAt = null;
                     }
                   });
                   onClose();
