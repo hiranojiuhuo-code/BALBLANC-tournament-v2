@@ -30,6 +30,7 @@ export default function BoardPage() {
   const [finishId, setFinishId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<'rec' | 'table'>('rec');
   const [catRaw, setCat] = useState<Cat | 'all'>('all');
+  const [q, setQ] = useState('');
   const now = useNow();
 
   if (data.matchups.length === 0) {
@@ -68,9 +69,18 @@ export default function BoardPage() {
       data.matchups.findIndex((x) => x.id === a.matchupId) - data.matchups.findIndex((x) => x.id === b.matchupId) ||
       a.order - b.order,
   );
+  // 選手名での絞り込み。カタカナで打っても ひらがな の名前に当たるようにする
+  const norm = (s: string) =>
+    s.trim().toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  const qn = norm(q);
+  const hitPlayers = qn ? data.players.filter((p) => norm(p.name).includes(qn)) : [];
+  const hitIds = new Set(hitPlayers.map((p) => p.id));
+  const byQuery = (arr: Match[]) =>
+    !qn ? arr : arr.filter((m) => (m.sideA || []).concat(m.sideB || []).some((id) => hitIds.has(id)));
+
   // タブの件数は種目で絞る前に数える（各タブに何試合あるか見えるように）
-  const readyAllCats = pending.filter((m) => conflictNames(data, m, busy).length === 0);
-  const blockedAllCats = pending.filter((m) => conflictNames(data, m, busy).length > 0);
+  const readyAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length === 0));
+  const blockedAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length > 0));
   const byCat = (arr: Match[]) => (cat === 'all' ? arr : arr.filter((m) => m.cat === cat));
   const readyRaw = byCat(readyAllCats);
   const blocked = byCat(blockedAllCats);
@@ -147,6 +157,58 @@ export default function BoardPage() {
         })}
       </div>
 
+      {/* 選手名での絞り込み。「〇〇さんの試合は？」に即答するための入口 */}
+      <div className="relative mb-2">
+        <input
+          type="text"
+          inputMode="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="選手名で絞り込む（例: ゆうき）"
+          aria-label="選手名で絞り込む"
+          className="input pr-10"
+        />
+        {q && (
+          <button
+            type="button"
+            aria-label="絞り込みを解除"
+            onClick={() => setQ('')}
+            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-lg font-bold text-mute active:scale-90"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* 検索した選手のいまの状況。試合中なら一覧に出てこないので、ここで分かるようにする */}
+      {qn && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          {hitPlayers.length === 0 ? (
+            <span className="text-[12px] font-bold text-warn">「{q}」に一致する選手がいません</span>
+          ) : (
+            hitPlayers.slice(0, 8).map((p) => {
+              const pace = paces.get(p.id);
+              return (
+                <span
+                  key={p.id}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel2 px-2 py-1 text-[12px] font-extrabold"
+                  style={{ color: teamColor(data, p.teamId) }}
+                >
+                  {p.name}
+                  {pace?.live ? (
+                    <Badge variant="live" className="px-2 py-0 text-[10px]">
+                      {pace.liveCourt != null ? `コート${pace.liveCourt + 1}` : '試合中'}
+                    </Badge>
+                  ) : (
+                    <span className="font-num text-[10px] font-bold text-mute">残り{pace?.remaining ?? 0}</span>
+                  )}
+                </span>
+              );
+            })
+          )}
+        </div>
+      )}
+
       {/* 種目タブ。下の2つの一覧だけを絞る（コートと終了見込みは全体のまま） */}
       {cats.length > 1 && (
         <div
@@ -201,7 +263,11 @@ export default function BoardPage() {
             ))}
           </div>
         ) : (
-          <EmptyNote>なし</EmptyNote>
+          <EmptyNote>
+            {qn && hitPlayers.length > 0
+              ? `${hitPlayers.map((p) => p.name).join('・')} でいま組める試合はありません`
+              : 'なし'}
+          </EmptyNote>
         )}
       </section>
 
