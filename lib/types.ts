@@ -104,6 +104,8 @@ export interface StandingRow {
   muD: number;
   mw: number;
   ml: number;
+  mixW: number; // うちミックスでの勝ち数
+  mixL: number;
 }
 
 export interface PlayerRecordResult {

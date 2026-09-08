@@ -143,9 +143,12 @@ export function ensureMatchup(d: Data, aId: string, bId: string): string {
 }
 
 /* ---------------- 集計 ---------------- */
-export function matchupScore(d: Data, id: string): { a: number; b: number } {
+// cat を渡すとその種目だけを数える（ミックスの内訳を出すのに使う）
+export function matchupScore(d: Data, id: string, cat?: Cat): { a: number; b: number } {
   let a = 0, b = 0;
-  matchesOf(d, id).filter((m) => m.status === 'done' && m.scoreA != null).forEach((m) => {
+  matchesOf(d, id)
+    .filter((m) => m.status === 'done' && m.scoreA != null && (!cat || m.cat === cat))
+    .forEach((m) => {
     if ((m.scoreA as number) > (m.scoreB as number)) a++;
     else if ((m.scoreB as number) > (m.scoreA as number)) b++;
   });
@@ -154,12 +157,18 @@ export function matchupScore(d: Data, id: string): { a: number; b: number } {
 
 export function standings(d: Data): StandingRow[] {
   const map: Record<string, StandingRow> = {};
-  d.teams.forEach((t) => (map[t.id] = { id: t.id, name: t.name, muW: 0, muL: 0, muD: 0, mw: 0, ml: 0 }));
+  d.teams.forEach((t) => (
+    map[t.id] = { id: t.id, name: t.name, muW: 0, muL: 0, muD: 0, mw: 0, ml: 0, mixW: 0, mixL: 0 }
+  ));
   d.matchups.forEach((mu) => {
     const s = matchupScore(d, mu.id);
     if (s.a === 0 && s.b === 0) return; // 未実施はスキップ
     map[mu.aId].mw += s.a; map[mu.aId].ml += s.b;
     map[mu.bId].mw += s.b; map[mu.bId].ml += s.a;
+    // ミックスだけの内訳（合計にも含まれている）
+    const sx = matchupScore(d, mu.id, 'M');
+    map[mu.aId].mixW += sx.a; map[mu.aId].mixL += sx.b;
+    map[mu.bId].mixW += sx.b; map[mu.bId].mixL += sx.a;
     if (s.a > s.b) { map[mu.aId].muW++; map[mu.bId].muL++; }
     else if (s.b > s.a) { map[mu.bId].muW++; map[mu.aId].muL++; }
     else { map[mu.aId].muD++; map[mu.bId].muD++; }

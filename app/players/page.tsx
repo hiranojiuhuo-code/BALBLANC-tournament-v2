@@ -75,6 +75,7 @@ export default function PlayersPage() {
 
       <Banner className="mb-4">
         選手の「編集」から名前・性別の修正と削除ができます。試合の出場者は「試合一覧」→編集 から設定します。
+        勝敗の括弧内は<span className="font-bold text-[var(--cat-m-text)]">ミックスの勝利数</span>です。
       </Banner>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -104,6 +105,7 @@ export default function PlayersPage() {
                   <tbody>
                     {ps.map((p) => {
                       const r = playerRecord(data, p.id, 'all');
+                      const mix = playerRecord(data, p.id, 'M'); // ミックスだけの内訳
                       const pace = paces.get(p.id);
                       const rem = pace?.remaining ?? 0;
                       return (
@@ -127,12 +129,14 @@ export default function PlayersPage() {
                             </div>
                           </td>
                           <td className="w-10 text-mute">{p.gender === 'M' ? '男' : p.gender === 'F' ? '女' : '-'}</td>
-                          <td className="font-num w-16 whitespace-nowrap text-xs">
+                          <td className="font-num w-20 whitespace-nowrap text-xs">
                             {r.played ? (
                               <>
                                 <b className="text-good">{r.w}</b>
                                 <span className="text-mute">-</span>
                                 <b className="text-bad">{r.l}</b>
+                                {/* 括弧内はミックスの勝利数（左の勝敗にも含まれる） */}
+                                <span className="ml-0.5 text-[11px] font-bold text-[var(--cat-m-text)]">({mix.w})</span>
                               </>
                             ) : (
                               <span className="text-mute">—</span>

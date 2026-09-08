@@ -49,11 +49,18 @@ export default function StandingsPage() {
                 <td className="font-num whitespace-nowrap">
                   {s.muW}勝{s.muL}敗{s.muD ? `${s.muD}分` : ''}
                 </td>
-                <td className="font-num whitespace-nowrap">{s.mw}-{s.ml}</td>
+                <td className="font-num whitespace-nowrap">
+                  {s.mw}-{s.ml}
+                  {/* ミックスの内訳。合計にも含まれている数字なので色を分ける */}
+                  <span className="ml-1 text-[11px] font-bold text-[var(--cat-m-text)]">({s.mixW})</span>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p className="mb-0 px-4 pb-3 pt-1 text-[11px] text-mute">
+          括弧内は<span className="font-bold text-[var(--cat-m-text)]">ミックスの勝利数</span>（左の勝敗にも含まれています）。
+        </p>
       </Card>
 
       <SectionTitle>対抗戦ごとのスコア</SectionTitle>
