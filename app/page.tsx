@@ -16,7 +16,7 @@ import { Button } from '@/components/Button';
 import { Chip, ChipRow } from '@/components/Chip';
 import { EmptyNote, EmptyState } from '@/components/EmptyState';
 import { MatchCard } from '@/components/MatchCard';
-import { Modal, ModalActions } from '@/components/Modal';
+import { Confirm, Modal, ModalActions } from '@/components/Modal';
 import { ScoreDialog } from '@/components/ScoreDialog';
 import { toast } from '@/components/Toast';
 import { IconCamera } from '@/components/icons';
@@ -43,6 +43,7 @@ export default function BoardPage() {
   const [assignId, setAssignId] = useState<string | null>(null);
   const [finishId, setFinishId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<'rec' | 'table'>('rec');
+  const [cancelId, setCancelId] = useState<string | null>(null);
   const [catRaw, setCat] = useState<GroupKey | 'all'>('all');
   const [q, setQ] = useState('');
   const now = useNow();
@@ -116,6 +117,35 @@ export default function BoardPage() {
   const recCount = sortMode === 'rec' ? Math.min(fc.length, ready.length) : 0;
   const prog = progressOf(scope, data.courtCount, now);
 
+  // コートから外して「未」に戻す（スコアは入れずに取り消す）
+  const removeFromCourt = (id: string) => {
+    const label = matchLabel(data.matches.find((x) => x.id === id) || { cat: 'S', no: 0, gender: 'M' });
+    mutate((d) => {
+      const t = d.matches.find((x) => x.id === id);
+      if (t) {
+        t.status = 'pending';
+        t.court = null;
+        t.startedAt = null;
+        t.endedAt = null;
+      }
+    });
+    toast(`${label} をコートから外しました`);
+  };
+
+  /*
+   * 入れ間違いは直後に気づくので、始まったばかりなら確認なしで戻す。
+   * 実際に進んでいる試合を誤って消すと経過時間が失われるため、そちらだけ確認する。
+   */
+  const askCancel = (id: string, elapsedMin: number | null) => {
+    if (elapsedMin != null && elapsedMin >= 3) setCancelId(id);
+    else removeFromCourt(id);
+  };
+
+  const cancelTarget = cancelId ? data.matches.find((x) => x.id === cancelId) : null;
+  const cancelElapsed = cancelTarget?.startedAt
+    ? Math.max(0, Math.round((now - new Date(cancelTarget.startedAt).getTime()) / 60000))
+    : 0;
+
   return (
     <div>
       <ChipRow>
@@ -154,11 +184,26 @@ export default function BoardPage() {
               }`}
             >
               <div className="relative z-10 flex items-center justify-between gap-1">
-                <span className="font-display text-sm font-extrabold">コート{i + 1}</span>
+                <span className="font-display whitespace-nowrap text-sm font-extrabold">コート{i + 1}</span>
                 {m ? (
-                  <Badge variant={elapsed != null && elapsed > prog.avgMin * 1.6 ? 'warn' : 'live'}>
-                    {elapsed != null ? `${elapsed}分経過` : '進行中'}
-                  </Badge>
+                  <div className="flex min-w-0 items-center gap-1">
+                    {/* ×ボタンと並ぶので「経過」は省く。3桁になっても折り返さない幅に収める */}
+                    <Badge
+                      variant={elapsed != null && elapsed > prog.avgMin * 1.6 ? 'warn' : 'live'}
+                      className="px-2 text-[10px]"
+                    >
+                      {elapsed != null ? `${elapsed}分` : '進行中'}
+                    </Badge>
+                    {/* 入れ間違いをその場で戻すための取り消し */}
+                    <button
+                      type="button"
+                      aria-label={`コート${i + 1}の試合を取り消す`}
+                      onClick={() => askCancel(m.id, elapsed)}
+                      className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line bg-panel text-[13px] font-bold leading-none text-mute active:scale-90"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : (
                   <Badge variant="ready">空き</Badge>
                 )}
@@ -370,6 +415,14 @@ export default function BoardPage() {
         完了 {prog.done} / 全 {prog.total} 試合
       </EmptyNote>
 
+      {cancelTarget && (
+        <Confirm
+          message={`${matchLabel(cancelTarget)} は${cancelElapsed}分経過しています。スコアを入れずにコートから外しますか？`}
+          danger
+          onOk={() => { removeFromCourt(cancelTarget.id); setCancelId(null); }}
+          onClose={() => setCancelId(null)}
+        />
+      )}
       {assignId && <AssignModal key={assignId} matchId={assignId} onClose={() => setAssignId(null)} />}
       {finishId && <ScoreDialog key={finishId} matchId={finishId} mode="finish" onClose={() => setFinishId(null)} />}
     </div>
