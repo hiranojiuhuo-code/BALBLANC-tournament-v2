@@ -110,6 +110,50 @@ export function busyPlayerIds(d: Data): Set<string> {
   return s;
 }
 
+/*
+ * 出場できない理由。コートで試合中か、「次の試合」に入っているか、その両方か。
+ * 待機に入れた時点でその選手は押さえられているとみなし、組める判定から外す。
+ */
+export type BlockKind = 'live' | 'queued' | 'both';
+export interface Conflict { name: string; kind: BlockKind }
+
+export interface BusyState {
+  live: Set<string>; // いまコートで試合中の選手
+  queuedBy: Map<string, Set<string>>; // 選手id -> その選手を含む待機中の試合id
+}
+
+export function busyState(d: Data): BusyState {
+  const live = new Set<string>();
+  const queuedBy = new Map<string, Set<string>>();
+  d.matches.forEach((m) => {
+    const ids = (m.sideA || []).concat(m.sideB || []);
+    if (m.status === 'live') {
+      ids.forEach((id) => live.add(id));
+    } else if (m.status === 'pending' && m.queuedAt != null) {
+      ids.forEach((id) => {
+        let s = queuedBy.get(id);
+        if (!s) { s = new Set(); queuedBy.set(id, s); }
+        s.add(m.id);
+      });
+    }
+  });
+  return { live, queuedBy };
+}
+
+// 待機中の試合を評価するときは、その試合自身を待機の理由から除く
+export function conflictsOf(d: Data, m: Match, st: BusyState): Conflict[] {
+  const out: Conflict[] = [];
+  (m.sideA || []).concat(m.sideB || []).forEach((id) => {
+    const isLive = st.live.has(id);
+    const qs = st.queuedBy.get(id);
+    const isQueued = !!qs && [...qs].some((x) => x !== m.id);
+    if (!isLive && !isQueued) return;
+    const name = (pById(d, id) || { name: '' }).name;
+    if (name) out.push({ name, kind: isLive && isQueued ? 'both' : isLive ? 'live' : 'queued' });
+  });
+  return out;
+}
+
 export function conflictNames(d: Data, m: Match, busy: Set<string>): string[] {
   return (m.sideA || []).concat(m.sideB || []).filter((id) => busy.has(id))
     .map((id) => (pById(d, id) || { name: '' }).name).filter(Boolean);

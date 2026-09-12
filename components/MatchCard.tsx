@@ -3,6 +3,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { matchLabel, muById, muLabel, names, pById, teamColor } from '@/lib/logic';
+import type { BlockKind, Conflict } from '@/lib/logic';
 import type { Data, Match } from '@/lib/types';
 import type { MatchPace, PlayerPace } from '@/lib/pacing';
 import { Badge, CatTag } from './Badge';
@@ -28,6 +29,35 @@ function Names({ data, ids, paces }: { data: Data; ids: string[] | undefined; pa
         );
       })}
     </>
+  );
+}
+
+/*
+ * 出場できない選手を理由ごとに色分けして出す。
+ * 「いま試合中」と「次の試合に押さえてある」と「その両方」は
+ * 対処が違う（前者は待てば空く、後者は待機を外せば組める）ので区別する。
+ */
+const KIND_CLS: Record<BlockKind, string> = {
+  live: 'border-warn/45 bg-warn/10 text-warn',
+  queued: 'border-cyan/45 bg-cyan/10 text-cyan',
+  both: 'border-bad/45 bg-bad/10 text-bad',
+};
+const KIND_LABEL: Record<BlockKind, string> = {
+  live: '試合中',
+  queued: '次の試合',
+  both: '試合中＋次',
+};
+
+function ConflictChips({ conflicts, size }: { conflicts: Conflict[]; size: string }) {
+  return (
+    <div className={`mt-1 flex flex-wrap gap-1 font-bold leading-tight ${size}`}>
+      {conflicts.map((c, i) => (
+        <span key={`${c.name}-${i}`} className={`rounded border px-1 py-px ${KIND_CLS[c.kind]}`}>
+          {c.name}
+          <span className="ml-0.5 opacity-75">{KIND_LABEL[c.kind]}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -59,7 +89,7 @@ export function MatchCard({
 }: {
   match: Match;
   state?: 'ready' | 'busy' | 'plain';
-  conflicts?: string[];
+  conflicts?: Conflict[];
   onClick?: () => void;
   compact?: boolean; // 2列グリッド向けの密な表示（進行ボードの一覧用）
   className?: string;
@@ -79,6 +109,7 @@ export function MatchCard({
       : state === 'busy'
         ? 'border-line bg-panel opacity-70 saturate-[.8]'
         : 'border-line bg-panel';
+  const hasLive = conflicts.some((c) => c.kind !== 'queued');
   const interactive = onClick ? 'cursor-pointer hover:border-cyan/50 active:scale-[.985]' : '';
 
   if (compact) {
@@ -95,7 +126,9 @@ export function MatchCard({
           <CatTag cat={m.cat} label={matchLabel(m)} />
           {recommended && <Badge variant="rec">おすすめ</Badge>}
           {state === 'ready' && !recommended && <Badge variant="ready">組める</Badge>}
-          {state === 'busy' && <Badge variant="busy">試合中</Badge>}
+          {state === 'busy' && (
+            hasLive ? <Badge variant="busy">試合中</Badge> : <Badge variant="queue">次の試合</Badge>
+          )}
         </div>
         <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: ac }}><Names data={data} ids={m.sideA} paces={paces} /></div>
         <div className="my-0.5 flex items-center gap-1.5 text-[9px] font-extrabold tracking-[.2em] text-mute/60">
@@ -103,7 +136,7 @@ export function MatchCard({
         </div>
         <div className="text-[13.5px] font-extrabold leading-tight" style={{ color: bc }}><Names data={data} ids={m.sideB} paces={paces} /></div>
         {conflicts.length > 0 ? (
-          <div className="mt-1 text-[10px] font-bold leading-tight text-warn">{conflicts.join('、')} が試合中</div>
+          <ConflictChips conflicts={conflicts} size="text-[9.5px]" />
         ) : pace ? (
           <PaceLine pace={pace} size="text-[10px]" />
         ) : null}
@@ -121,7 +154,9 @@ export function MatchCard({
         <span className="truncate text-[10.5px] font-bold uppercase tracking-wide text-mute">{muLabel(data, mu)}</span>
         {recommended && <Badge variant="rec">おすすめ</Badge>}
         {state === 'ready' && !recommended && <Badge variant="ready">組める</Badge>}
-        {state === 'busy' && <Badge variant="busy">出場者が試合中</Badge>}
+        {state === 'busy' && (
+          hasLive ? <Badge variant="busy">出場者が試合中</Badge> : <Badge variant="queue">次の試合に入っている</Badge>
+        )}
       </div>
       <CatTag cat={m.cat} label={matchLabel(m)} />
       <div className="mt-1.5 text-[15px] font-extrabold leading-snug" style={{ color: ac }}>
@@ -134,7 +169,7 @@ export function MatchCard({
         <Names data={data} ids={m.sideB} paces={paces} />
       </div>
       {conflicts.length > 0 ? (
-        <div className="mt-1.5 text-[11px] font-bold text-warn">{conflicts.join('、')} が他コートで試合中</div>
+        <ConflictChips conflicts={conflicts} size="text-[10.5px]" />
       ) : pace ? (
         <PaceLine pace={pace} size="text-[11px]" />
       ) : null}

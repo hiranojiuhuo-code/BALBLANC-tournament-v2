@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Status } from '@/lib/types';
 
-type Variant = 'ready' | 'busy' | 'live' | 'done' | 'muted' | 'rec' | 'warn';
+type Variant = 'ready' | 'busy' | 'live' | 'done' | 'muted' | 'rec' | 'warn' | 'queue';
 
 const map: Record<Variant, string> = {
   ready: 'border-good/40 bg-good/10 text-good',
@@ -11,6 +11,7 @@ const map: Record<Variant, string> = {
   muted: 'border-line bg-panel2 text-mute',
   rec: 'glow-neon border-neon/60 bg-neon/20 text-neon',
   warn: 'border-warn/45 bg-warn/12 text-warn',
+  queue: 'border-cyan/45 bg-cyan/12 text-cyan',
 };
 
 export function Badge({ variant, className = '', children }: {

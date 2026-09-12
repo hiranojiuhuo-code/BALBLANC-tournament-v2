@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
-  busyPlayerIds, conflictNames, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
+  busyState, conflictsOf, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
   muById, muLabel, names, teamColor, tName,
 } from '@/lib/logic';
 import { matchPace, playerPaces, progressOf, recommendOrder } from '@/lib/pacing';
@@ -65,7 +65,7 @@ export default function BoardPage() {
   }
 
   const curMu = boardMuRaw !== '__all' && !muById(data, boardMuRaw) ? '__all' : boardMuRaw;
-  const busy = busyPlayerIds(data);
+  const bstate = busyState(data);
   const fc = freeCourts(data);
 
   const scope = curMu === '__all' ? data.matches : matchesOf(data, curMu);
@@ -103,8 +103,8 @@ export default function BoardPage() {
   pending = pending.filter((m) => !queued.has(m.id));
 
   // タブの件数は種目で絞る前に数える（各タブに何試合あるか見えるように）
-  const readyAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length === 0));
-  const blockedAllCats = byQuery(pending.filter((m) => conflictNames(data, m, busy).length > 0));
+  const readyAllCats = byQuery(pending.filter((m) => conflictsOf(data, m, bstate).length === 0));
+  const blockedAllCats = byQuery(pending.filter((m) => conflictsOf(data, m, bstate).length > 0));
   const byCat = (arr: Match[]) => (cat === 'all' ? arr : arr.filter((m) => inGroup(m, cat)));
   const readyRaw = byCat(readyAllCats);
   const blocked = byCat(blockedAllCats);
@@ -238,7 +238,7 @@ export default function BoardPage() {
         ) : (
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {queue.map((m, i) => {
-              const conf = conflictNames(data, m, busy);
+              const conf = conflictsOf(data, m, bstate);
               return (
                 <div key={m.id} className="relative">
                   <span className="absolute -left-1.5 -top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-cyan font-num text-[10px] font-extrabold text-[var(--on-accent)]">
@@ -393,7 +393,13 @@ export default function BoardPage() {
       {blocked.length > 0 && (
         <section className="mb-6">
           <SectionTitle>
-            <span className="text-warn">出場者が試合中で組めない（{blocked.length}）</span>
+            <span className="text-warn">出場者が空いていない（{blocked.length}）</span>
+            {/* 3つの状態の凡例。色の意味がひと目で分かるようにする */}
+            <span className="ml-auto flex flex-wrap items-center gap-1 text-[9.5px] font-bold">
+              <span className="rounded border border-warn/45 bg-warn/10 px-1 py-px text-warn">試合中</span>
+              <span className="rounded border border-cyan/45 bg-cyan/10 px-1 py-px text-cyan">次の試合</span>
+              <span className="rounded border border-bad/45 bg-bad/10 px-1 py-px text-bad">両方</span>
+            </span>
           </SectionTitle>
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
             {blocked.map((m) => (
@@ -402,7 +408,7 @@ export default function BoardPage() {
                 match={m}
                 state="busy"
                 compact
-                conflicts={conflictNames(data, m, busy)}
+                conflicts={conflictsOf(data, m, bstate)}
                 paces={paces}
                 onClick={() => setAssignId(m.id)}
               />
@@ -435,8 +441,7 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
   const mutate = useStore((s) => s.mutate);
   const m = data.matches.find((x) => x.id === matchId);
   if (!m) return null;
-  const busy = busyPlayerIds(data);
-  const conf = conflictNames(data, m, busy);
+  const conf = conflictsOf(data, m, busyState(data));
   const fc = freeCourts(data);
   const mu = muById(data, m.matchupId)!;
 
@@ -476,7 +481,11 @@ function AssignModal({ matchId, onClose }: { matchId: string; onClose: () => voi
       </div>
       {conf.length > 0 && (
         <Banner variant="warn" className="mb-3">
-          {conf.join('、')} が現在ほかのコートで試合中です。それでも入れますか？
+          {conf.filter((c) => c.kind !== 'queued').map((c) => c.name).join('、')}
+          {conf.some((c) => c.kind !== 'queued') && ' が他のコートで試合中です。'}
+          {conf.filter((c) => c.kind === 'queued').map((c) => c.name).join('、')}
+          {conf.some((c) => c.kind === 'queued') && ' が「次の試合」に入っています。'}
+          それでも入れますか？
         </Banner>
       )}
       {fc.length === 0 ? (
