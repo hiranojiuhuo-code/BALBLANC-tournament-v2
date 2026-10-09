@@ -249,6 +249,9 @@ export default function SettingsPage() {
           >
             サンプルデータを読み込んで試す
           </Button>
+          <Button variant="ghost" href="/setup">
+            手入力で大会を作り直す
+          </Button>
           <Button
             variant="ghost"
             onClick={() =>

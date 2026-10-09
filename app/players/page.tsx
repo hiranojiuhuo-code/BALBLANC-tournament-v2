@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
-import { playerRecord, syncMatchups, teamColor, tName, uid } from '@/lib/logic';
+import { parseNames, playerRecord, syncMatchups, teamColor, tName, uid } from '@/lib/logic';
 import { playerPaces } from '@/lib/pacing';
 import { useNow } from '@/lib/useNow';
 import type { PlayerGender, Team } from '@/lib/types';
@@ -20,6 +20,7 @@ export default function PlayersPage() {
   const [editPlayer, setEditPlayer] = useState<{ id: string | null; teamId: string } | null>(null);
   const [renameTeam, setRenameTeam] = useState<Team | null>(null);
   const [delTeam, setDelTeam] = useState<Team | null>(null);
+  const [bulkTeam, setBulkTeam] = useState<string | null>(null);
   const now = useNow();
 
   function addTeam() {
@@ -153,15 +154,22 @@ export default function PlayersPage() {
                   </tbody>
                 </table>
               )}
-              <Button size="sm" variant="ghost" className="mt-3" onClick={() => setEditPlayer({ id: null, teamId: t.id })}>
-                ＋ 選手を追加
-              </Button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setEditPlayer({ id: null, teamId: t.id })}>
+                  ＋ 選手を追加
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setBulkTeam(t.id)}>
+                  まとめて追加
+                </Button>
+              </div>
             </Card>
           );
         })}
       </div>
 
       <Button variant="ghost" className="mt-4" onClick={addTeam}>＋ チームを追加</Button>
+
+      {bulkTeam && <BulkAddModal key={bulkTeam} teamId={bulkTeam} onClose={() => setBulkTeam(null)} />}
 
       {editPlayer && (
         <EditPlayerModal
@@ -276,6 +284,63 @@ function EditPlayerModal({ playerId, teamId, onClose }: {
           onClose={() => setConfirmDel(false)}
         />
       )}
+    </Modal>
+  );
+}
+
+/* 名簿をまとめて貼り付けて選手を一括追加する。1人ずつ足すと合宿規模では時間がかかるため */
+function BulkAddModal({ teamId, onClose }: { teamId: string; onClose: () => void }) {
+  const data = useStore((s) => s.data);
+  const mutate = useStore((s) => s.mutate);
+  const [text, setText] = useState('');
+  const [gender, setGender] = useState<PlayerGender>('M');
+
+  const existing = new Set(data.players.filter((p) => p.teamId === teamId).map((p) => p.name));
+  const names = parseNames(text);
+  const toAdd = names.filter((n) => !existing.has(n));
+  const dup = names.length - toAdd.length;
+
+  function save() {
+    if (!toAdd.length) { toast('追加できる名前がありません'); return; }
+    const pool = toAdd.map(() => uid());
+    mutate((d) => {
+      toAdd.forEach((name, i) => {
+        if (!d.players.some((p) => p.teamId === teamId && p.name === name)) {
+          d.players.push({ id: pool[i], teamId, name, gender });
+        }
+      });
+    });
+    onClose();
+    toast(`${toAdd.length}名を追加しました`);
+  }
+
+  return (
+    <Modal title={`選手をまとめて追加（${tName(data, teamId)}）`} onClose={onClose}>
+      <div className="mb-3">
+        <label className="mb-1 block text-xs font-bold text-mute">区分（まとめて追加する分に適用）</label>
+        <select className="input" value={gender} onChange={(e) => setGender(e.target.value as PlayerGender)}>
+          <option value="M">男子</option>
+          <option value="F">女子</option>
+          <option value="X">未設定</option>
+        </select>
+      </div>
+      <div className="mb-2">
+        <label className="mb-1 block text-xs font-bold text-mute">名前（1行に1人。読点区切りも可）</label>
+        <textarea
+          autoFocus
+          className="input min-h-36 leading-relaxed"
+          placeholder={'ゆうき\nりき\nこうた'}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </div>
+      <p className="mb-0 mt-0 text-xs text-mute">
+        {toAdd.length}名を追加します{dup > 0 && `（同じ名前の${dup}名は既にいるので除きます）`}
+      </p>
+      <ModalActions>
+        <Button variant="ghost" onClick={onClose}>キャンセル</Button>
+        <Button variant="primary" disabled={!toAdd.length} onClick={save}>追加</Button>
+      </ModalActions>
     </Modal>
   );
 }

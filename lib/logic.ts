@@ -236,6 +236,16 @@ export function playerRecord(d: Data, pid: string, catFilter: Cat | 'all'): Play
   return { w, l, gf, ga, played: w + l };
 }
 
+// 手入力の名簿を1件ずつに分ける。改行でも読点でも区切れるようにする
+export function parseNames(s: string): string[] {
+  const out: string[] = [];
+  (s || '').split(/[\n,、，　]+/).forEach((x) => {
+    const n = x.trim();
+    if (n && !out.includes(n)) out.push(n);
+  });
+  return out;
+}
+
 /* ---------------- 受け取ったデータの正規化 ---------------- */
 /*
  * Firebase Realtime Database は空配列とnullを「存在しない」ものとして落とし、

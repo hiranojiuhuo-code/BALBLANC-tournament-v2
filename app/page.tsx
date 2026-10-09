@@ -52,14 +52,14 @@ export default function BoardPage() {
     return (
       <EmptyState
         icon={<IconCamera width={40} height={40} />}
-        title="対戦表の写真を取り込んでください"
-        desc="手書きの対戦表を撮影／選択すると、チーム・対抗戦・試合を自動で作成します。複数枚をまとめてアップすると、タイトルごとに別々の対抗戦として取り込みます。"
+        title="大会のデータを用意してください"
+        desc="手書きの対戦表を撮影／選択すると、チーム・対抗戦・試合を自動で作成します。写真が無い場合は、チームと選手を手入力して始められます。"
       >
         <Button href="/import" variant="primary">写真から取り込み</Button>
+        <Button href="/setup" variant="primary">手入力で始める</Button>
         <Button variant="ghost" onClick={() => { loadSample(); toast('サンプルデータを読み込みました'); }}>
           サンプルデータで試す
         </Button>
-        <Button href="/settings" variant="ghost">手動でチーム・対抗戦を追加</Button>
       </EmptyState>
     );
   }
