@@ -89,8 +89,18 @@ export function names(d: Data, ids: string[] | undefined): string {
   return (ids || []).map((id) => (pById(d, id) || { name: '?' }).name).join('・');
 }
 
+/*
+ * 個人戦は「同じチーム同士の対抗戦」として表す。
+ * こうするとチーム/対抗戦の構造をそのまま使えるので、被り検出・待機列・
+ * 進行の仕組みに手を入れずに個人戦を扱える。チーム順位など、チーム前提の
+ * 表示だけをこの判定で切り替える。
+ */
+export const isSoloMu = (mu: Matchup | undefined): boolean => !!mu && mu.aId === mu.bId;
+export const isSolo = (d: Data): boolean => d.matchups.length > 0 && d.matchups.every(isSoloMu);
+
 export function muLabel(d: Data, mu: Matchup | undefined): string {
-  return mu ? tName(d, mu.aId) + ' vs ' + tName(d, mu.bId) : '';
+  if (!mu) return '';
+  return isSoloMu(mu) ? tName(d, mu.aId) : tName(d, mu.aId) + ' vs ' + tName(d, mu.bId);
 }
 
 export function matchLabel(m: Pick<Match, 'cat' | 'no' | 'gender'>): string {
@@ -205,6 +215,7 @@ export function standings(d: Data): StandingRow[] {
     map[t.id] = { id: t.id, name: t.name, muW: 0, muL: 0, muD: 0, mw: 0, ml: 0, mixW: 0, mixL: 0 }
   ));
   d.matchups.forEach((mu) => {
+    if (isSoloMu(mu)) return; // 個人戦は自分同士なのでチーム順位には加算しない
     const s = matchupScore(d, mu.id);
     if (s.a === 0 && s.b === 0) return; // 未実施はスキップ
     map[mu.aId].mw += s.a; map[mu.aId].ml += s.b;

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
 import {
-  busyState, conflictsOf, freeCourts, liveOnCourt, matchLabel, matchesOf, matchupScore,
+  busyState, conflictsOf, freeCourts, isSolo, liveOnCourt, matchLabel, matchesOf, matchupScore,
   muById, muLabel, names, teamColor, tName,
 } from '@/lib/logic';
 import { matchPace, playerPaces, progressOf, recommendOrder } from '@/lib/pacing';
@@ -116,6 +116,7 @@ export default function BoardPage() {
   const ready = sortMode === 'rec' ? recommendOrder(data, readyRaw, paces) : readyRaw;
   const recCount = sortMode === 'rec' ? Math.min(fc.length, ready.length) : 0;
   const prog = progressOf(scope, data.courtCount, now);
+  const solo = isSolo(data);
 
   // コートから外して「未」に戻す（スコアは入れずに取り消す）
   const removeFromCourt = (id: string) => {
@@ -148,6 +149,8 @@ export default function BoardPage() {
 
   return (
     <div>
+      {/* 個人戦は対抗戦が1件だけなので切り替えチップは出さない */}
+      {!solo && (
       <ChipRow>
         <Chip on={curMu === '__all'} onClick={() => setBoardMu('__all')}>全対抗戦</Chip>
         {data.matchups.map((mu) => {
@@ -159,8 +162,9 @@ export default function BoardPage() {
           );
         })}
       </ChipRow>
+      )}
 
-      {selMu && selScore && (
+      {!solo && selMu && selScore && (
         <div className="mb-4 flex items-center gap-3 font-display text-base font-extrabold">
           <span style={{ color: teamColor(data, selMu.aId) }}>{tName(data, selMu.aId)}</span>
           <Pill className="text-base">{selScore.a} - {selScore.b}</Pill>

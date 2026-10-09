@@ -23,6 +23,8 @@ export default function SetupPage() {
   const mutate = useStore((s) => s.mutate);
   const [title, setTitle] = useState('');
   const [teams, setTeams] = useState<TeamForm[]>([emptyTeam(), emptyTeam()]);
+  const [solo, setSolo] = useState<TeamForm>({ name: '参加者', men: '', women: '' });
+  const [mode, setMode] = useState<'team' | 'solo'>('team');
   const [confirm, setConfirm] = useState(false);
 
   const hasData = data.teams.length > 0 || data.matches.length > 0;
@@ -30,9 +32,16 @@ export default function SetupPage() {
     setTeams((ts) => ts.map((t, k) => (k === i ? { ...t, ...patch } : t)));
 
   const counts = teams.map((t) => parseNames(t.men).length + parseNames(t.women).length);
-  const total = counts.reduce((a, b) => a + b, 0);
+  const total = mode === 'solo'
+    ? parseNames(solo.men).length + parseNames(solo.women).length
+    : counts.reduce((a, b) => a + b, 0);
 
   function validate(): string | null {
+    if (mode === 'solo') {
+      if (!solo.name.trim()) return 'グループ名を入力してください';
+      if (total < 2) return '参加者を2人以上入力してください';
+      return null;
+    }
     const names = teams.map((t) => t.name.trim());
     if (names.some((n) => !n)) return 'チーム名をすべて入力してください';
     if (new Set(names).size !== names.length) return 'チーム名が重複しています';
@@ -56,7 +65,8 @@ export default function SetupPage() {
       d.matches = [];
       if (title.trim()) d.title = title.trim();
 
-      const made = teams.map((t) => {
+      const forms = mode === 'solo' ? [solo] : teams;
+      const made = forms.map((t) => {
         const team = { id: nid(), name: t.name.trim() };
         d.teams.push(team);
         const add = (list: string[], gender: PlayerGender) =>
@@ -70,16 +80,23 @@ export default function SetupPage() {
         return team;
       });
 
-      // 3チーム以上なら総当たりの組み合わせを作る。不要な分は設定から消せる
-      for (let a = 0; a < made.length; a++) {
-        for (let b = a + 1; b < made.length; b++) {
-          d.matchups.push({ id: muId(made[a].id, made[b].id), aId: made[a].id, bId: made[b].id });
+      if (mode === 'solo') {
+        // 個人戦は「同じグループ同士」の対抗戦1件として持つ
+        d.matchups.push({ id: muId(made[0].id, made[0].id), aId: made[0].id, bId: made[0].id });
+      } else {
+        // 3チーム以上なら総当たりの組み合わせを作る。不要な分は設定から消せる
+        for (let a = 0; a < made.length; a++) {
+          for (let b = a + 1; b < made.length; b++) {
+            d.matchups.push({ id: muId(made[a].id, made[b].id), aId: made[a].id, bId: made[b].id });
+          }
         }
       }
       syncMatchups(d);
     });
     setConfirm(false);
-    toast('チームと選手を作成しました。続けて試合を追加してください');
+    toast(mode === 'solo'
+      ? '参加者を登録しました。続けて試合を追加してください'
+      : 'チームと選手を作成しました。続けて試合を追加してください');
     router.push('/matches');
   }
 
@@ -100,6 +117,32 @@ export default function SetupPage() {
       )}
 
       <Card>
+        <SectionTitle>形式</SectionTitle>
+        <div className="grid grid-cols-2 gap-2">
+          {([['team', '対抗戦', 'チーム対チームで戦う'], ['solo', '個人戦', 'チーム分けなしで個人が戦う']] as const).map(
+            ([k, label, desc]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setMode(k)}
+                className={`flex min-h-11 flex-col items-center gap-1 rounded-xl border p-3 text-center transition active:scale-[.97] ${
+                  mode === k ? 'glow-neon border-neon bg-neon/10' : 'border-line bg-panel2 hover:border-cyan/50'
+                }`}
+              >
+                <span className="text-sm font-extrabold">{label}</span>
+                <span className="text-[10px] leading-tight text-mute">{desc}</span>
+              </button>
+            ),
+          )}
+        </div>
+        <p className="mb-0 mt-2.5 text-xs leading-relaxed text-mute">
+          {mode === 'solo'
+            ? '参加者をひとつの名簿として登録します。試合は誰と誰でも自由に組め、順位表は個人成績で出ます。'
+            : 'チームごとに名簿を登録します。順位表はチーム順位で出ます。'}
+        </p>
+      </Card>
+
+      <Card>
         <label className="mb-1 block text-xs font-bold text-mute">大会名（任意）</label>
         <input
           type="text"
@@ -110,7 +153,33 @@ export default function SetupPage() {
         />
       </Card>
 
-      {teams.map((t, i) => (
+      {mode === 'solo' ? (
+        <Card>
+          <SectionTitle className="mb-3">参加者（{total}名）</SectionTitle>
+          <label className="mb-1 block text-xs font-bold text-mute">グループ名</label>
+          <input
+            type="text"
+            className="input mb-3"
+            placeholder="例: 参加者"
+            value={solo.name}
+            onChange={(e) => setSolo((v) => ({ ...v, name: e.target.value }))}
+          />
+          <label className="mb-1 block text-xs font-bold text-mute">男子（1行に1人）</label>
+          <textarea
+            className="input mb-3 min-h-32 leading-relaxed"
+            placeholder={'ゆうき\nりき\nこうた'}
+            value={solo.men}
+            onChange={(e) => setSolo((v) => ({ ...v, men: e.target.value }))}
+          />
+          <label className="mb-1 block text-xs font-bold text-mute">女子（1行に1人）</label>
+          <textarea
+            className="input min-h-32 leading-relaxed"
+            placeholder={'たまお\nもえ'}
+            value={solo.women}
+            onChange={(e) => setSolo((v) => ({ ...v, women: e.target.value }))}
+          />
+        </Card>
+      ) : teams.map((t, i) => (
         <Card key={i}>
           <div className="mb-3 flex items-center gap-2">
             <SectionTitle className="mb-0 flex-1">チーム{i + 1}</SectionTitle>
@@ -153,14 +222,18 @@ export default function SetupPage() {
         </Card>
       ))}
 
-      <Button variant="ghost" onClick={() => setTeams((ts) => [...ts, emptyTeam()])}>
-        ＋ チームを追加
-      </Button>
+      {mode === 'team' && (
+        <Button variant="ghost" onClick={() => setTeams((ts) => [...ts, emptyTeam()])}>
+          ＋ チームを追加
+        </Button>
+      )}
 
       <Card>
         <p className="mt-0 text-xs leading-relaxed text-mute">
-          {teams.length}チーム・合計{total}名で作成します。
-          {teams.length > 2 && '3チーム以上なので、総当たりの対抗戦をすべて作ります（不要な分は設定から削除できます）。'}
+          {mode === 'solo'
+            ? `個人戦として参加者${total}名で作成します。`
+            : `${teams.length}チーム・合計${total}名で作成します。`}
+          {mode === 'team' && teams.length > 2 && '3チーム以上なので、総当たりの対抗戦をすべて作ります（不要な分は設定から削除できます）。'}
         </p>
         <Button variant="primary" className="w-full" onClick={submit}>
           この内容で作成する

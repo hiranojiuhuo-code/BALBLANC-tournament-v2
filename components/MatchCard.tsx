@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useStore } from '@/lib/store';
-import { matchLabel, muById, muLabel, names, pById, teamColor } from '@/lib/logic';
+import { isSoloMu, matchLabel, muById, muLabel, names, pById, teamColor } from '@/lib/logic';
 import type { BlockKind, Conflict } from '@/lib/logic';
 import type { Data, Match } from '@/lib/types';
 import type { MatchPace, PlayerPace } from '@/lib/pacing';
@@ -100,8 +100,10 @@ export function MatchCard({
   const data = useStore((s) => s.data);
   const mu = muById(data, m.matchupId);
   if (!mu) return null;
-  const ac = teamColor(data, mu.aId);
-  const bc = teamColor(data, mu.bId);
+  // 個人戦は左右が同じグループなので、チーム色だと区別がつかない。側ごとに色を分ける
+  const soloMu = isSoloMu(mu);
+  const ac = soloMu ? 'var(--team-0)' : teamColor(data, mu.aId);
+  const bc = soloMu ? 'var(--team-1)' : teamColor(data, mu.bId);
   const frame = recommended
     ? 'glow-neon border-neon/70 bg-neon/8'
     : state === 'ready'
@@ -121,7 +123,9 @@ export function MatchCard({
         {state === 'ready' && (
           <span className={`absolute bottom-2 left-0 top-2 w-1 rounded-r ${recommended ? 'bg-neon' : 'bg-good'}`} />
         )}
-        <div className="truncate text-[9.5px] font-bold uppercase tracking-wide text-mute">{muLabel(data, mu)}</div>
+        {!soloMu && (
+          <div className="truncate text-[9.5px] font-bold uppercase tracking-wide text-mute">{muLabel(data, mu)}</div>
+        )}
         <div className="mb-1 mt-1 flex flex-wrap items-center gap-1.5">
           <CatTag cat={m.cat} label={matchLabel(m)} />
           {recommended && <Badge variant="rec">おすすめ</Badge>}
@@ -151,7 +155,9 @@ export function MatchCard({
     >
       {state === 'ready' && <span className="absolute bottom-3 left-0 top-3 w-1 rounded-r bg-good" />}
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="truncate text-[10.5px] font-bold uppercase tracking-wide text-mute">{muLabel(data, mu)}</span>
+        <span className="truncate text-[10.5px] font-bold uppercase tracking-wide text-mute">
+          {soloMu ? '' : muLabel(data, mu)}
+        </span>
         {recommended && <Badge variant="rec">おすすめ</Badge>}
         {state === 'ready' && !recommended && <Badge variant="ready">組める</Badge>}
         {state === 'busy' && (
