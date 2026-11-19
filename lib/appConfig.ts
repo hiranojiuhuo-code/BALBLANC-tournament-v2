@@ -9,4 +9,4 @@
  *
  * 例: 'https://xxxx-default-rtdb.asia-southeast1.firebasedatabase.app'
  */
-export const SYNC_DB_URL = '';
+export const SYNC_DB_URL = 'https://balblanc-2026-default-rtdb.asia-southeast1.firebasedatabase.app';
