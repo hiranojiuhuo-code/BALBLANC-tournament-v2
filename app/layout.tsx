@@ -34,8 +34,6 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // ハイドレーション前にテーマを適用して初期描画のちらつきを防ぐ
-  const themeInit = `try{var t=(JSON.parse(localStorage.getItem('tennis_taikousen_v3')||'{}').state||{}).theme;if(t)document.documentElement.dataset.theme=t;}catch(e){}`;
   /*
    * GitHub PagesはHTMLを10分キャッシュするが、デプロイで古いJSファイルは消える。
    * その間に開くと読めないスクリプトを掴んで白画面になるので、
@@ -59,7 +57,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja" className={outfit.variable} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: staleGuard }} />
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <script dangerouslySetInnerHTML={{ __html: pwaInit }} />
         <AppShell>{children}</AppShell>
       </body>

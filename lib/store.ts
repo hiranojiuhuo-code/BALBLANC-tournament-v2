@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
-import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot, ThemeId } from './types';
+import type { BuiltMatchup, Data, MatchGender, SavePayload, SaveSlot } from './types';
 import { defaultData, muId, muById, normalizePayload, sampleData, syncMatchups, uid } from './logic';
-import { DEFAULT_THEME } from './themes';
 import {
   loadSyncConfig, pushMutation, saveSyncConfig, startSync, stopSync,
   type SyncConfig, type SyncStatus,
@@ -43,11 +42,9 @@ interface StoreState {
   data: Data;
   hydrated: boolean;
   boardMu: string; // 進行ボードで選択中の対抗戦（'__all' = 全対抗戦）
-  theme: ThemeId;
   syncStatus: SyncStatus;
   syncRoom: string;
   syncMsg: string;
-  setTheme: (t: ThemeId) => void;
   setBoardMu: (id: string) => void;
   mutate: (fn: (d: Data) => void) => void;
   applySnapshot: (p: SavePayload) => void;
@@ -77,11 +74,9 @@ export const useStore = create<StoreState>()(
       data: defaultData(),
       hydrated: false,
       boardMu: '__all',
-      theme: DEFAULT_THEME,
       syncStatus: 'off',
       syncRoom: '',
       syncMsg: '',
-      setTheme: (t) => set({ theme: t }),
       setBoardMu: (id) => set({ boardMu: id }),
 
       // ローカル優先: 手元に即反映し、同期中なら同じ操作を裏で送る
@@ -220,15 +215,14 @@ export const useStore = create<StoreState>()(
     {
       name: LS_KEY,
       storage: createJSONStorage(() => migratingStorage),
-      partialize: (s) => ({ data: s.data, theme: s.theme }),
+      partialize: (s) => ({ data: s.data }),
       // 同期を経由して配列が壊れた状態で保存されている場合があるので、読み込み時に必ず直す
       merge: (persisted, current) => {
-        const p = (persisted || {}) as { data?: Partial<Data>; theme?: ThemeId };
-        if (!p.data) return { ...current, ...(p.theme ? { theme: p.theme } : {}) };
+        const p = (persisted || {}) as { data?: Partial<Data> };
+        if (!p.data) return current;
         const base = defaultData();
         return {
           ...current,
-          ...(p.theme ? { theme: p.theme } : {}),
           data: { ...base, ...normalizePayload(p.data), ai: { ...base.ai, ...(p.data.ai || {}) } },
         };
       },

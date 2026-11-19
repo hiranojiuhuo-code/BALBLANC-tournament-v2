@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useStore } from '@/lib/store';
-import { applyTheme } from '@/lib/themes';
 import { PASS_HASH, sha256hex } from '@/lib/crypto';
 import { loadSyncConfig, parseJoinHash, type SyncConfig } from '@/lib/sync';
 import type { Provider } from '@/lib/types';
@@ -44,16 +43,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [more, setMore] = useState(false);
   const [joinAsk, setJoinAsk] = useState<SyncConfig | null>(null);
   const hydrated = useStore((s) => s.hydrated);
-  const theme = useStore((s) => s.theme);
   // 残り試合数は進行中いつでも気になるので、どの画面でもヘッダーに出す
   const matches = useStore((s) => s.data.matches);
   const totalMatches = matches.length;
   const remainingMatches = matches.filter((m) => m.status !== 'done').length;
   const pathname = normPath(usePathname());
 
-  useEffect(() => {
-    if (hydrated) applyTheme(theme);
-  }, [hydrated, theme]);
 
   /*
    * URLハッシュ（#s=参加リンク / #k=APIキー）を処理する。
