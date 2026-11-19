@@ -2,6 +2,7 @@
 
 import type { Data, SavePayload } from './types';
 import { snapshot } from './logic';
+import { sha256hex } from './crypto';
 
 /*
  * 端末間同期。Firebase Realtime Database の REST + SSE を直接叩く（SDK不要）。
@@ -13,7 +14,8 @@ import { snapshot } from './logic';
  */
 
 export type SyncStatus = 'off' | 'connecting' | 'online' | 'offline' | 'error';
-export interface SyncConfig { dbUrl: string; room: string }
+// pass は合言葉で参加したときだけ入る。端末内での表示用で、サーバーには送らない
+export interface SyncConfig { dbUrl: string; room: string; pass?: string }
 
 const LS_SYNC = 'tennis_sync_v1';
 const FLUSH_DELAY = 250;
@@ -43,6 +45,32 @@ export function newRoomCode(): string {
   const a = new Uint8Array(12);
   crypto.getRandomValues(a);
   return Array.from(a, (b) => cs[b % cs.length]).join('');
+}
+
+export const MIN_PASS_LEN = 6;
+
+// 全角/半角や前後の空白の違いで別の部屋に入ってしまわないよう、合言葉をそろえる
+export function normalizePass(s: string): string {
+  return (s || '').normalize('NFKC').trim();
+}
+
+/*
+ * 合言葉から部屋の名前を決める。同じ合言葉を入れた端末は必ず同じ部屋になる。
+ * 合言葉そのものではなくハッシュを部屋名にするので、データベース側に合言葉は残らない。
+ */
+export async function roomFromPass(pass: string): Promise<string> {
+  const h = await sha256hex('balblanc-sync-v1:' + normalizePass(pass));
+  return 'p' + h.slice(0, 40);
+}
+
+// 参加する前に、その部屋にもうデータがあるかを確かめる（手元のデータを黙って置き換えないため）
+export async function peekRoom(c: SyncConfig): Promise<{ teams: number; matches: number } | null> {
+  const res = await fetch(roomUrl(c), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GET ${res.status}`);
+  const doc = (await res.json()) as RoomDoc | null;
+  if (!doc?.payload) return null;
+  const count = (v: unknown) => (Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.keys(v).length : 0);
+  return { teams: count(doc.payload.teams), matches: count(doc.payload.matches) };
 }
 
 export function normalizeDbUrl(s: string): string {

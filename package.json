@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "postbuild": "node scripts/stamp-sw.mjs"
   },
   "dependencies": {
     "next": "^15.3.4",

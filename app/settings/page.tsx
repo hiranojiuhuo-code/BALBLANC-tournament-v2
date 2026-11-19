@@ -10,6 +10,7 @@ import { Banner, Card, SectionTitle } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { CountStepper } from '@/components/Stepper';
 import { SyncCard } from '@/components/SyncCard';
+import { InstallCard } from '@/components/InstallCard';
 import { Confirm, Prompt } from '@/components/Modal';
 import { toast } from '@/components/Toast';
 
@@ -124,6 +125,8 @@ export default function SettingsPage() {
       </Card>
 
       <SyncCard />
+
+      <InstallCard />
 
       <Card>
         <SectionTitle>基本設定</SectionTitle>
